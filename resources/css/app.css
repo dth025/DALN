@@ -199,4 +199,15 @@
     box-shadow: 0 0 0 1px color-mix(in oklab, var(--primary) 30%, transparent),
                 0 0 24px -4px color-mix(in oklab, var(--primary) 35%, transparent);
   }
+
+  .animate-gradient-text {
+    background-size: 200% auto;
+    animation: gradient-wave 4s linear infinite;
+  }
+}
+
+@keyframes gradient-wave {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
 }

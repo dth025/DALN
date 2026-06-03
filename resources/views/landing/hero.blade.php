@@ -4,8 +4,11 @@
             <div class="inline-flex items-center gap-1.5 rounded-full border border-primary/30 bg-primary/10 px-3 py-1 text-xs font-medium text-primary backdrop-blur-md">
                 <i data-lucide="sparkles" class="h-3 w-3"></i> Powered by GPT Health AI
             </div>
-            <h1 class="mt-5 text-4xl font-bold leading-[1.05] tracking-tight font-display md:text-6xl text-foreground">
-                Sức khỏe của bạn, <span class="gradient-text">được dẫn dắt</span> bởi AI
+            <h1 class="mt-5 flex flex-col gap-2 md:gap-3 text-4xl font-extrabold leading-tight tracking-tight font-display sm:text-5xl lg:text-[3.25rem] xl:text-6xl text-foreground">
+                <span>Sức khỏe của bạn,</span>
+                <span class="pl-0 sm:pl-4 md:pl-8 lg:pl-10 xl:pl-[2.5rem] bg-gradient-to-r from-primary via-accent to-primary animate-gradient-text bg-clip-text text-transparent drop-shadow-sm whitespace-nowrap">
+                    được dẫn dắt bởi AI
+                </span>
             </h1>
             <p class="mt-5 max-w-xl text-base leading-relaxed text-muted-foreground md:text-lg">
                 HealthAI phân tích chỉ số cơ thể, gợi ý thực đơn, lịch tập và nhắc lịch khám — tất cả trong một nền tảng thông minh và đẹp mắt.

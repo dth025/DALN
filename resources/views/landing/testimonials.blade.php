@@ -27,7 +27,7 @@
                     'name' => 'Bs. Phương', 
                     'role' => 'Bác sĩ nội tổng quát', 
                     'text' => 'Tôi giới thiệu HealthAI cho bệnh nhân để theo dõi chỉ số tại nhà. Rất tiện.',
-                    'avatar' => 'https://images.unsplash.com/photo-1559839734-2b71f1536783?auto=format&fit=crop&q=80&w=150&h=150'
+                    'avatar' => 'https://nguoinoitieng.tv/images/nnt/107/0/bjur.jpg'
                 ],
             ];
         @endphp

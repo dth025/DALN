@@ -10,15 +10,64 @@ class HealthController extends Controller
 {
     public function index()
     {
-        return view('health', ['user' => auth()->user()]);
+        $user = auth()->user();
+        // Limit the amount of historical data sent to the view to avoid
+        // heavy view serialization and potential max execution time errors.
+        $metrics = \App\Models\HealthMetric::where('user_id', $user->id)
+            ->orderBy('recorded_at', 'desc')
+            ->take(30)
+            ->get();
+
+        // Normalize to a simple array keyed by YYYY-MM-DD and include only
+        // the fields needed by the frontend to keep payload small.
+        $history = $metrics->reverse()->mapWithKeys(function ($item) {
+            $dateKey = substr($item->recorded_at, 0, 10);
+            return [$dateKey => [
+                'heart_rate' => $item->heart_rate,
+                'steps' => $item->steps,
+                'calories' => $item->calories,
+                'weight' => $item->weight,
+                'sleep_hours' => $item->sleep_hours,
+                'spo2' => $item->spo2,
+                'water_intake' => $item->water_intake,
+                'burned' => $item->burned ?? 2000,
+            ]];
+        });
+
+        return view('health', [
+            'user' => $user,
+            'history' => $history
+        ]);
     }
 
     public function update(Request $request)
     {
         $user = auth()->user();
-        $user->update($request->only([
-            'heart_rate', 'spo2', 'water_intake', 'sleep_hours', 'weight', 'height'
-        ]));
+        
+        // Data for latest user profile
+        $userData = $request->only([
+            'heart_rate', 'spo2', 'water_intake', 'sleep_hours', 'weight', 'height', 'steps', 'calories'
+        ]);
+        $user->update($userData);
+
+        // Data for historical tracking
+        $metricData = $request->only([
+            'heart_rate', 'spo2', 'water_intake', 'sleep_hours', 'weight', 'steps', 'calories'
+        ]);
+        
+        $recordedAt = $request->input('recorded_at', now()->toDateString());
+        
+        // Ngăn chặn lưu dữ liệu cho tương lai
+        if ($recordedAt > now()->format('Y-m-d')) {
+            return response()->json(['error' => 'Chưa đến ngày này'], 422);
+        }
+
+        \App\Models\HealthMetric::updateOrCreate(
+            ['user_id' => $user->id, 'recorded_at' => $recordedAt],
+            array_merge($metricData, [
+                'burned' => $request->input('burned', 2000)
+            ])
+        );
 
         if ($request->ajax()) {
             return response()->json(['message' => 'Cập nhật thành công!']);
@@ -100,6 +149,15 @@ class HealthController extends Controller
         $user = \App\Models\User::find($payload['user_id']);
         if ($user) {
             $user->update(array_filter($data, fn($v) => $v !== null));
+
+            // Sync to today's health_metrics
+            $metricData = array_filter($data, fn($v, $k) => $v !== null && $k !== 'height', ARRAY_FILTER_USE_BOTH);
+            if (!empty($metricData)) {
+                \App\Models\HealthMetric::updateOrCreate(
+                    ['user_id' => $user->id, 'recorded_at' => now()->toDateString()],
+                    $metricData
+                );
+            }
         }
 
         // Signal web client

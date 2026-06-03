@@ -12,8 +12,6 @@
 
     <!-- Scripts -->
     @vite(['resources/css/app.css', 'resources/js/app.js'])
-    <script src="https://unpkg.com/lucide@latest"></script>
-    
     <script>
         function toggleDark() {
             document.documentElement.classList.toggle('dark');
@@ -94,6 +92,10 @@
                             <a href="{{ route('pricing') }}" class="flex items-center gap-2 rounded-full px-4 py-2 text-sm font-medium transition-all {{ request()->routeIs('pricing') ? 'bg-primary/10 text-primary shadow-sm' : 'text-muted-foreground hover:bg-sidebar-accent hover:text-foreground' }}">
                                 <i data-lucide="credit-card" class="h-4 w-4"></i>
                                 <span>Gói dịch vụ</span>
+                            </a>
+                            <a href="{{ route('admin.index') }}" class="flex items-center gap-2 rounded-full px-4 py-2 text-sm font-medium transition-all {{ request()->routeIs('admin.index') ? 'bg-primary/10 text-primary shadow-sm' : 'text-muted-foreground hover:bg-sidebar-accent hover:text-foreground' }}">
+                                <i data-lucide="shield-alert" class="h-4 w-4"></i>
+                                <span>Admin</span>
                             </a>
                         </nav>
                     </div>
@@ -184,6 +186,9 @@
                 <a href="{{ route('appointments') }}" class="flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-medium {{ request()->routeIs('appointments') ? 'bg-primary text-primary-foreground shadow-glow' : 'hover:bg-sidebar-accent' }}">
                     <i data-lucide="calendar-days" class="h-5 w-5"></i> Lịch khám
                 </a>
+                <a href="{{ route('admin.index') }}" class="flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-medium {{ request()->routeIs('admin.index') ? 'bg-primary text-primary-foreground shadow-glow' : 'hover:bg-sidebar-accent' }}">
+                    <i data-lucide="shield-alert" class="h-5 w-5"></i> Admin Dashboard
+                </a>
             </nav>
         </div>
 
@@ -202,9 +207,5 @@
         }
     </script>
 
-    
-    <script>
-        lucide.createIcons();
-    </script>
 </body>
 </html>

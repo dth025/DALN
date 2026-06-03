@@ -61,12 +61,3 @@
 - **Email**: `admin@gmail.com`
 - **Mật khẩu**: `123456`
 
----
-
-## 📸 Ảnh chụp màn hình
-
-*(Đang cập nhật...)*
-
----
-
-**Phát triển bởi Đội ngũ Antigravity AI**

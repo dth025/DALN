@@ -9,9 +9,16 @@ use App\Http\Controllers\AppointmentController;
 use App\Http\Controllers\ChatbotController;
 use App\Http\Controllers\MenuController;
 use App\Http\Controllers\PricingController;
+use App\Http\Controllers\AdminController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', [HomeController::class, 'index'])->name('home');
+
+// Admin Routes (Independent Session Auth)
+Route::get('/admin/login', [AdminController::class, 'showLoginForm'])->name('admin.login');
+Route::post('/admin/login', [AdminController::class, 'login'])->name('admin.login.submit');
+Route::post('/admin/logout', [AdminController::class, 'logout'])->name('admin.logout');
+Route::get('/admin', [AdminController::class, 'index'])->name('admin.index');
 
 Route::middleware('auth')->group(function () {
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
@@ -24,6 +31,7 @@ Route::middleware('auth')->group(function () {
     Route::get('/appointments', [AppointmentController::class, 'index'])->name('appointments');
     Route::get('/pricing', [PricingController::class, 'index'])->name('pricing');
     Route::get('/chatbot', [ChatbotController::class, 'index'])->name('chatbot');
+    Route::post('/chatbot/send', [ChatbotController::class, 'send'])->name('chatbot.send');
     Route::get('/menu', [MenuController::class, 'index'])->name('menu');
 
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');

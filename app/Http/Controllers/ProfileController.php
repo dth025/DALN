@@ -35,6 +35,13 @@ class ProfileController extends Controller
 
         $user->save();
 
+        if ($user->weight) {
+            \App\Models\HealthMetric::updateOrCreate(
+                ['user_id' => $user->id, 'recorded_at' => now()->toDateString()],
+                ['weight' => $user->weight]
+            );
+        }
+
         if ($request->ajax() || $request->wantsJson()) {
             return response()->json(['status' => 'profile-updated', 'user' => $user]);
         }
