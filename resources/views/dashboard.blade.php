@@ -555,9 +555,9 @@ function dashboardOverview() {
         },
 
         getAverageWeight() {
-            if (!this.history || this.history.length === 0) return 70;
+            if (!this.history || this.history.length === 0) return 0;
             const weights = this.history.map(h => parseFloat(h.weight)).filter(w => !isNaN(w) && w > 0);
-            if (weights.length === 0) return 70;
+            if (weights.length === 0) return 0;
             return weights.reduce((a, b) => a + b, 0) / weights.length;
         },
 
@@ -572,7 +572,7 @@ function dashboardOverview() {
             // For cumulative metrics, we DO NOT carry forward. If there is no record, it's 0.
             if (['steps', 'calories', 'water_intake'].includes(metricId)) {
                 const exactRecord = this.history.find(h => h.recorded_at.startsWith(dateStr));
-                return this.getMetricValue(exactRecord, metricId);
+                return this.getMetricValue(exactRecord, metricId) || 0;
             }
             
             // For non-cumulative metrics, we use LOCF / FOCB / Defaults
@@ -608,14 +608,15 @@ function dashboardOverview() {
             
             // Defaults
             const defaults = {
-                heart_rate: 70,
-                spo2: 98,
-                weight: this.getAverageWeight() || 70,
-                sleep_hours: 7,
-                bmi: 22
+                heart_rate: 0,
+                spo2: 0,
+                weight: 0,
+                sleep_hours: 0,
+                bmi: 0
             };
             if (metricId === 'bmi') {
-                const avgWeight = this.getAverageWeight() || 70;
+                const avgWeight = this.getAverageWeight() || 0;
+                if (avgWeight === 0) return 0;
                 const ht = parseFloat(this.height || 170);
                 return parseFloat((avgWeight / ((ht / 100) ** 2)).toFixed(1));
             }

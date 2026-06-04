@@ -13,7 +13,7 @@ class AdminController extends Controller
     public function index()
     {
         if (!session()->has('admin_logged_in')) {
-            return redirect()->route('admin.login');
+            return view('admin.login');
         }
 
         // 1. Lấy dữ liệu tổng quan
@@ -190,38 +190,40 @@ class AdminController extends Controller
             ]
         ];
 
-        // 4. Danh sách phản hồi (Feedback)
-        $feedbacksList = [
-            [
-                'id' => 1,
-                'name' => 'Nguyễn Văn A',
-                'avatar' => 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=150&h=150&q=80',
-                'content' => 'Giao diện ứng dụng cực kỳ đẹp và mượt mà! Thích nhất chức năng Thực đơn AI rất sát thực tế.',
-                'rating' => 5,
-                'created_at' => '2026-05-28',
-                'status' => 'pending'
-            ],
-            [
-                'id' => 2,
-                'name' => 'Trần Thị B',
-                'avatar' => 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=150&h=150&q=80',
-                'content' => 'Chatbot AI trả lời rất thông minh và hữu ích khi mình bị ho khan nửa đêm. Sẽ gia hạn gói Pro!',
-                'rating' => 5,
-                'created_at' => '2026-05-27',
-                'status' => 'replied',
-                'reply' => 'Chào bạn B, cảm ơn bạn đã tin tưởng HealthAI. Đội ngũ phát triển luôn nỗ lực hết mình để nâng cao trải nghiệm của bạn!'
-            ],
-            [
-                'id' => 3,
-                'name' => 'Lê Hoàng C',
-                'avatar' => 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=150&h=150&q=80',
-                'content' => 'Thiếu phần kết nối với Smart Watch Garmin của mình. Mong sớm cập nhật.',
-                'rating' => 4,
-                'created_at' => '2026-05-25',
-                'status' => 'replied',
-                'reply' => 'Cảm ơn phản hồi của anh C. Tính năng đồng bộ Garmin đang được thử nghiệm và sẽ phát hành trong phiên bản tới.'
-            ]
-        ];
+        // 4. Danh sách phản hồi (Feedback) từ Database
+        $feedbacksFromDb = \App\Models\Feedback::whereNull('parent_id')
+            ->with(['replies', 'user'])
+            ->orderBy('created_at', 'desc')
+            ->get();
+
+        $feedbacksList = [];
+        foreach ($feedbacksFromDb as $fb) {
+            $adminReply = $fb->replies->where('is_admin_reply', true)->first();
+            $feedbacksList[] = [
+                'id' => $fb->id,
+                'name' => $fb->user ? $fb->user->name : ($fb->guest_name ?? 'Khách'),
+                'avatar' => $fb->user ? ($fb->user->avatar ? asset('storage/' . $fb->user->avatar) : 'https://ui-avatars.com/api/?name=' . urlencode($fb->user->name) . '&background=6366f1&color=fff') : ($fb->guest_avatar ?? 'https://ui-avatars.com/api/?name=Guest&background=64748b&color=fff'),
+                'content' => $fb->content,
+                'rating' => $fb->rating,
+                'created_at' => $fb->created_at->format('Y-m-d'),
+                'status' => $adminReply ? 'replied' : 'pending',
+                'reply' => $adminReply ? $adminReply->content : null,
+                'likes_count' => $fb->likes_count,
+                'dislikes_count' => $fb->dislikes_count,
+                'replies' => $fb->replies->map(function($r) {
+                    return [
+                        'id' => $r->id,
+                        'name' => $r->user ? $r->user->name : ($r->guest_name ?? 'Khách'),
+                        'avatar' => $r->user ? ($r->user->avatar ? asset('storage/' . $r->user->avatar) : 'https://ui-avatars.com/api/?name=' . urlencode($r->user->name) . '&background=6366f1&color=fff') : ($r->guest_avatar ?? 'https://ui-avatars.com/api/?name=Guest&background=64748b&color=fff'),
+                        'content' => $r->content,
+                        'is_admin_reply' => $r->is_admin_reply,
+                        'created_at' => $r->created_at->format('Y-m-d H:i'),
+                        'likes_count' => $r->likes_count,
+                        'dislikes_count' => $r->dislikes_count
+                    ];
+                })->toArray()
+            ];
+        }
 
         // 5. Giao dịch gần đây (Recent transactions)
         $recentTransactions = [
@@ -262,14 +264,6 @@ class AdminController extends Controller
         ));
     }
 
-    public function showLoginForm()
-    {
-        if (session()->has('admin_logged_in')) {
-            return redirect()->route('admin.index');
-        }
-        return view('admin.login');
-    }
-
     public function login(Request $request)
     {
         $request->validate([
@@ -290,6 +284,6 @@ class AdminController extends Controller
     public function logout()
     {
         session()->forget('admin_logged_in');
-        return redirect()->route('admin.login');
+        return redirect()->route('admin.index');
     }
 }

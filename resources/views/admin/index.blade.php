@@ -674,19 +674,60 @@
                                     "{{ $fb['content'] }}"
                                 </p>
 
-                                @if($fb['status'] === 'replied')
-                                <div class="mt-4 bg-primary/5 rounded-2xl border border-primary/10 p-3.5">
-                                    <div class="flex items-center gap-1.5 text-[9px] font-black uppercase text-primary mb-1">
-                                        <i data-lucide="message-square" class="h-3 w-3"></i> Admin Phản hồi
+                                <!-- Like / Dislike reactions for Admin -->
+                                <div class="flex items-center gap-4 text-xs mt-3 text-muted-foreground">
+                                    <button onclick="reactFeedbackAdmin({{ $fb['id'] }}, 'like')" class="flex items-center gap-1.5 hover:text-primary transition-all font-bold cursor-pointer group">
+                                        <i data-lucide="thumbs-up" class="h-4 w-4 group-hover:scale-110 transition-transform"></i>
+                                        <span id="like-count-admin-{{ $fb['id'] }}">{{ $fb['likes_count'] }}</span>
+                                    </button>
+                                    <button onclick="reactFeedbackAdmin({{ $fb['id'] }}, 'dislike')" class="flex items-center gap-1.5 hover:text-destructive transition-all font-bold cursor-pointer group">
+                                        <i data-lucide="thumbs-down" class="h-4 w-4 group-hover:scale-110 transition-transform"></i>
+                                        <span id="dislike-count-admin-{{ $fb['id'] }}">{{ $fb['dislikes_count'] }}</span>
+                                    </button>
+                                </div>
+
+                                <!-- Nested replies -->
+                                @if(count($fb['replies']) > 0)
+                                <div class="mt-4 pl-4 border-l-2 border-border/50 space-y-3.5">
+                                    @foreach($fb['replies'] as $reply)
+                                    <div class="p-3 rounded-2xl bg-muted/10 border border-border/20 space-y-2">
+                                        <div class="flex justify-between items-start gap-4">
+                                            <div class="flex items-center gap-2.5">
+                                                <img src="{{ $reply['avatar'] }}" alt="avatar" class="h-7 w-7 rounded-full border border-border/40">
+                                                <div>
+                                                    <div class="flex items-center gap-1.5 flex-wrap">
+                                                        <span class="text-xs font-bold text-foreground leading-none">{{ $reply['name'] }}</span>
+                                                        @if($reply['is_admin_reply'])
+                                                            <span class="rounded bg-primary/10 border border-primary/20 px-1.5 py-0.5 text-[8px] font-black text-primary uppercase">Admin</span>
+                                                        @endif
+                                                    </div>
+                                                    <span class="text-[8px] text-muted-foreground">{{ $reply['created_at'] }}</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <p class="text-xs text-foreground/80 leading-relaxed font-semibold">
+                                            {{ $reply['content'] }}
+                                        </p>
+                                        <!-- Reply Reactions -->
+                                        <div class="flex items-center gap-3 text-[10px] text-muted-foreground font-semibold">
+                                            <button onclick="reactFeedbackAdmin({{ $reply['id'] }}, 'like')" class="flex items-center gap-1 hover:text-primary transition-all cursor-pointer">
+                                                <i data-lucide="thumbs-up" class="h-3 w-3"></i>
+                                                <span id="like-count-admin-{{ $reply['id'] }}">{{ $reply['likes_count'] }}</span>
+                                            </button>
+                                            <button onclick="reactFeedbackAdmin({{ $reply['id'] }}, 'dislike')" class="flex items-center gap-1 hover:text-destructive transition-all cursor-pointer">
+                                                <i data-lucide="thumbs-down" class="h-3 w-3"></i>
+                                                <span id="dislike-count-admin-{{ $reply['id'] }}">{{ $reply['dislikes_count'] }}</span>
+                                            </button>
+                                        </div>
                                     </div>
-                                    <p class="text-xs text-muted-foreground leading-relaxed">{{ $fb['reply'] }}</p>
+                                    @endforeach
                                 </div>
                                 @endif
                             </div>
 
                             <div class="pt-4 border-t border-border/20 flex gap-2.5 justify-end">
                                 <button onclick="openFeedbackModal({{ $fb['id'] }})" class="h-10 text-xs font-semibold rounded-xl bg-gradient-to-r {{ $fb['status'] === 'replied' ? 'from-slate-600 to-slate-700' : 'from-indigo-600 to-blue-600 shadow-glow' }} px-5 text-white hover:scale-[1.02] transition-transform">
-                                    {{ $fb['status'] === 'replied' ? 'Xem lại phản hồi' : 'Trả lời người dùng' }}
+                                    {{ $fb['status'] === 'replied' ? 'Phản hồi khác' : 'Trả lời người dùng' }}
                                 </button>
                             </div>
                         </div>
@@ -1267,14 +1308,48 @@
                 return;
             }
 
-            const fb = feedbacks.find(f => f.id === selectedFeedbackId);
-            if (fb) {
-                fb.status = 'replied';
-                fb.reply = replyText;
-                alert('Đã gửi phản hồi thành công đến email người dùng!');
-            }
-            closeFeedbackModal();
-            location.reload();
+            fetch(`/admin/feedback/${selectedFeedbackId}/reply`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                },
+                body: JSON.stringify({ reply: replyText })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert('Đã gửi phản hồi của Admin thành công!');
+                    location.reload();
+                } else {
+                    alert('Đã xảy ra lỗi. Vui lòng thử lại!');
+                }
+            })
+            .catch(error => {
+                console.error('Error submitting reply:', error);
+                alert('Không thể kết nối đến máy chủ!');
+            });
+        }
+
+        function reactFeedbackAdmin(id, type) {
+            fetch(`/feedback/${id}/react`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                },
+                body: JSON.stringify({ type: type })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.likes !== undefined && data.dislikes !== undefined) {
+                    const lCount = document.getElementById('like-count-admin-' + id);
+                    const dCount = document.getElementById('dislike-count-admin-' + id);
+                    if (lCount) lCount.innerText = data.likes;
+                    if (dCount) dCount.innerText = data.dislikes;
+                }
+            })
+            .catch(error => console.error('Error reacting to feedback:', error));
         }
 
         // Mock Export Function

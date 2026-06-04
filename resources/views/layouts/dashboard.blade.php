@@ -93,10 +93,7 @@
                                 <i data-lucide="credit-card" class="h-4 w-4"></i>
                                 <span>Gói dịch vụ</span>
                             </a>
-                            <a href="{{ route('admin.index') }}" class="flex items-center gap-2 rounded-full px-4 py-2 text-sm font-medium transition-all {{ request()->routeIs('admin.index') ? 'bg-primary/10 text-primary shadow-sm' : 'text-muted-foreground hover:bg-sidebar-accent hover:text-foreground' }}">
-                                <i data-lucide="shield-alert" class="h-4 w-4"></i>
-                                <span>Admin</span>
-                            </a>
+
                         </nav>
                     </div>
 
@@ -114,10 +111,75 @@
                                 <i data-lucide="sun" class="h-4 w-4 hidden dark:block"></i>
                             </button>
 
-                            <button class="relative flex h-9 w-9 items-center justify-center rounded-lg border border-border bg-card/40 text-muted-foreground transition-all hover:border-primary/40 hover:text-primary">
-                                <i data-lucide="bell" class="h-4 w-4"></i>
-                                <span class="absolute right-2 top-2 h-1.5 w-1.5 rounded-full bg-destructive"></span>
-                            </button>
+                            <div x-data="notificationBell()" x-init="fetchNotifications(); setInterval(() => fetchNotifications(), 30000)" class="relative">
+                                <button @click="open = !open; if(open) fetchNotifications()" class="relative flex h-9 w-9 items-center justify-center rounded-lg border border-border bg-card/40 text-muted-foreground transition-all hover:border-primary/40 hover:text-primary cursor-pointer">
+                                    <i data-lucide="bell" class="h-4 w-4"></i>
+                                    <span x-show="unreadCount > 0" x-transition
+                                          class="absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full bg-destructive text-[9px] font-black text-white shadow-lg animate-pulse"
+                                          x-text="unreadCount > 9 ? '9+' : unreadCount"></span>
+                                </button>
+
+                                <!-- Notification Dropdown -->
+                                <div x-show="open" @click.away="open = false"
+                                     x-transition:enter="transition ease-out duration-200"
+                                     x-transition:enter-start="opacity-0 scale-95 -translate-y-2"
+                                     x-transition:enter-end="opacity-100 scale-100 translate-y-0"
+                                     x-transition:leave="transition ease-in duration-150"
+                                     x-transition:leave-start="opacity-100 scale-100"
+                                     x-transition:leave-end="opacity-0 scale-95 -translate-y-2"
+                                     class="absolute right-0 top-full mt-3 w-[340px] sm:w-[380px] rounded-2xl border border-border/60 bg-card/95 backdrop-blur-2xl shadow-[0_20px_60px_-15px_rgba(0,0,0,0.3)] overflow-hidden z-50"
+                                     style="display: none;">
+
+                                    <!-- Header -->
+                                    <div class="flex items-center justify-between px-5 py-3.5 border-b border-border/40 bg-muted/20">
+                                        <div class="flex items-center gap-2">
+                                            <div class="flex h-7 w-7 items-center justify-center rounded-lg gradient-primary shadow-sm">
+                                                <i data-lucide="bell-ring" class="h-3.5 w-3.5 text-white"></i>
+                                            </div>
+                                            <h4 class="text-xs font-bold uppercase tracking-widest text-foreground">Thông báo</h4>
+                                        </div>
+                                        <button x-show="unreadCount > 0" @click="markAllRead()" class="text-[10px] font-bold text-primary hover:text-primary/80 transition-colors cursor-pointer uppercase tracking-wider">
+                                            Đọc tất cả
+                                        </button>
+                                    </div>
+
+                                    <!-- Notification List -->
+                                    <div class="max-h-[360px] overflow-y-auto overscroll-contain" style="scrollbar-width: thin;">
+                                        <template x-if="notifications.length === 0">
+                                            <div class="flex flex-col items-center justify-center py-10 px-6 text-center">
+                                                <div class="flex h-14 w-14 items-center justify-center rounded-2xl bg-muted/30 border border-border/30 mb-3">
+                                                    <i data-lucide="bell-off" class="h-6 w-6 text-muted-foreground/50"></i>
+                                                </div>
+                                                <p class="text-xs font-semibold text-muted-foreground">Chưa có thông báo nào</p>
+                                                <p class="text-[10px] text-muted-foreground/60 mt-1">Thông báo từ Admin sẽ hiển thị ở đây</p>
+                                            </div>
+                                        </template>
+
+                                        <template x-for="n in notifications" :key="n.id">
+                                            <a :href="n.link || '#'" @click="markRead(n)"
+                                               class="flex items-start gap-3 px-5 py-3.5 border-b border-border/20 transition-all hover:bg-muted/20 cursor-pointer"
+                                               :class="!n.is_read ? 'bg-primary/[0.03]' : ''">
+                                                <!-- Icon -->
+                                                <div class="shrink-0 mt-0.5">
+                                                    <div class="flex h-9 w-9 items-center justify-center rounded-xl shadow-sm border"
+                                                         :class="n.type === 'admin_reply' ? 'bg-blue-500/10 border-blue-500/20 text-blue-500' : 'bg-amber-500/10 border-amber-500/20 text-amber-500'">
+                                                        <i :data-lucide="n.type === 'admin_reply' ? 'message-circle' : 'heart'" class="h-4 w-4"></i>
+                                                    </div>
+                                                </div>
+                                                <!-- Content -->
+                                                <div class="flex-1 min-w-0">
+                                                    <div class="flex items-center gap-2">
+                                                        <p class="text-xs font-bold text-foreground truncate" x-text="n.title"></p>
+                                                        <span x-show="!n.is_read" class="shrink-0 h-2 w-2 rounded-full bg-primary animate-pulse"></span>
+                                                    </div>
+                                                    <p class="text-[11px] text-muted-foreground mt-0.5 line-clamp-2 leading-relaxed" x-text="n.message"></p>
+                                                    <span class="text-[9px] text-muted-foreground/60 font-medium mt-1 block" x-text="timeAgo(n.created_at)"></span>
+                                                </div>
+                                            </a>
+                                        </template>
+                                    </div>
+                                </div>
+                            </div>
 
                             <div class="h-8 w-px bg-border mx-1 hidden sm:block"></div>
 
@@ -186,9 +248,7 @@
                 <a href="{{ route('appointments') }}" class="flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-medium {{ request()->routeIs('appointments') ? 'bg-primary text-primary-foreground shadow-glow' : 'hover:bg-sidebar-accent' }}">
                     <i data-lucide="calendar-days" class="h-5 w-5"></i> Lịch khám
                 </a>
-                <a href="{{ route('admin.index') }}" class="flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-medium {{ request()->routeIs('admin.index') ? 'bg-primary text-primary-foreground shadow-glow' : 'hover:bg-sidebar-accent' }}">
-                    <i data-lucide="shield-alert" class="h-5 w-5"></i> Admin Dashboard
-                </a>
+
             </nav>
         </div>
 
@@ -204,6 +264,67 @@
         function toggleMobileNav() {
             const nav = document.getElementById('mobile-nav');
             nav.classList.toggle('hidden');
+        }
+
+        function notificationBell() {
+            return {
+                open: false,
+                notifications: [],
+                unreadCount: 0,
+
+                async fetchNotifications() {
+                    try {
+                        const res = await fetch('/notifications', {
+                            headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' }
+                        });
+                        if (res.ok) {
+                            const data = await res.json();
+                            this.notifications = data.notifications;
+                            this.unreadCount = data.unread_count;
+                            this.$nextTick(() => { if(typeof lucide !== 'undefined') lucide.createIcons(); });
+                        }
+                    } catch(e) { console.error('Notification fetch error:', e); }
+                },
+
+                async markRead(n) {
+                    if (n.is_read) return;
+                    try {
+                        const token = document.querySelector('meta[name="csrf-token"]')?.content;
+                        await fetch(`/notifications/${n.id}/read`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': token, 'Accept': 'application/json' }
+                        });
+                        n.is_read = true;
+                        this.unreadCount = Math.max(0, this.unreadCount - 1);
+                    } catch(e) { console.error(e); }
+                },
+
+                async markAllRead() {
+                    try {
+                        const token = document.querySelector('meta[name="csrf-token"]')?.content;
+                        await fetch('/notifications/read-all', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': token, 'Accept': 'application/json' }
+                        });
+                        this.notifications.forEach(n => n.is_read = true);
+                        this.unreadCount = 0;
+                    } catch(e) { console.error(e); }
+                },
+
+                timeAgo(dateStr) {
+                    const date = new Date(dateStr);
+                    const now = new Date();
+                    const seconds = Math.floor((now - date) / 1000);
+                    if (seconds < 60) return 'Vừa xong';
+                    const minutes = Math.floor(seconds / 60);
+                    if (minutes < 60) return minutes + ' phút trước';
+                    const hours = Math.floor(minutes / 60);
+                    if (hours < 24) return hours + ' giờ trước';
+                    const days = Math.floor(hours / 24);
+                    if (days < 7) return days + ' ngày trước';
+                    return date.toLocaleDateString('vi-VN');
+                }
+            };
         }
     </script>
 
