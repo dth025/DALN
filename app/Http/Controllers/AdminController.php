@@ -6,6 +6,7 @@ use Illuminate\Http\Request;
 use App\Models\User;
 use App\Models\Appointment;
 use App\Models\HealthMetric;
+use App\Models\Doctor;
 use Illuminate\Support\Facades\Hash;
 
 class AdminController extends Controller
@@ -16,9 +17,51 @@ class AdminController extends Controller
             return view('admin.login');
         }
 
+        // Self-healing database check (Ensure columns and doctors table exist)
+        try {
+            if (!\Illuminate\Support\Facades\Schema::hasColumn('users', 'plan') || 
+                !\Illuminate\Support\Facades\Schema::hasColumn('users', 'status') || 
+                !\Illuminate\Support\Facades\Schema::hasTable('doctors')) {
+                \Illuminate\Support\Facades\Artisan::call('migrate', ['--force' => true]);
+            }
+
+            // Seed default doctors if empty
+            if (\Illuminate\Support\Facades\Schema::hasTable('doctors') && \App\Models\Doctor::count() === 0) {
+                \App\Models\Doctor::create([
+                    'name' => 'BS. Nguyễn Văn Minh',
+                    'specialty' => 'Tim mạch',
+                    'email' => 'nguyenvanminh@healthai.vn',
+                    'phone' => '0912111222',
+                    'avatar' => 'https://i.pravatar.cc/100?img=68',
+                    'place' => 'Vinmec Times City',
+                    'status' => 'active'
+                ]);
+                \App\Models\Doctor::create([
+                    'name' => 'BS. Trần Thị Hoa',
+                    'specialty' => 'Dinh dưỡng',
+                    'email' => 'tranthihoa@healthai.vn',
+                    'phone' => '0987333444',
+                    'avatar' => 'https://i.pravatar.cc/100?img=47',
+                    'place' => 'Tư vấn video (Online)',
+                    'status' => 'active'
+                ]);
+                \App\Models\Doctor::create([
+                    'name' => 'BS. Lê Hoàng Nam',
+                    'specialty' => 'Da liễu',
+                    'email' => 'lehoangnam@healthai.vn',
+                    'phone' => '0905555666',
+                    'avatar' => 'https://i.pravatar.cc/100?img=12',
+                    'place' => 'Bệnh viện Bạch Mai',
+                    'status' => 'active'
+                ]);
+            }
+        } catch (\Exception $e) {
+            \Log::error('Self-healing migrations/seeds failed: ' . $e->getMessage());
+        }
+
         // 1. Lấy dữ liệu tổng quan
-        $totalUsers = User::count() + 142; // Cộng thêm số ảo cho sinh động
-        $activeToday = User::where('updated_at', '>=', now()->startOfDay())->count() + 37;
+        $totalUsers = User::count();
+        $activeToday = User::where('updated_at', '>=', now()->startOfDay())->count();
         
         // Mock Doanh thu
         $totalRevenue = 48250000; // VNĐ
@@ -26,132 +69,58 @@ class AdminController extends Controller
         
         // Mock Gói dịch vụ đã bán
         $packagesSold = [
-            'free' => 84,
-            'pro' => 45,
-            'premium' => 28
+            'free' => User::where('plan', 'Free')->count(),
+            'pro' => User::where('plan', 'Pro')->count(),
+            'premium' => User::where('plan', 'Premium')->count()
         ];
         
         // Mock AI phân tích
         $aiAnalysesToday = 142;
         
-        // 2. Danh sách người dùng (Mock dữ liệu chi tiết cho Admin)
-        $usersList = [
-            [
-                'id' => 1,
-                'name' => 'Nguyễn Văn A',
-                'email' => 'nguyenvana@gmail.com',
-                'phone' => '0912345678',
-                'plan' => 'Premium',
-                'status' => 'active',
-                'created_at' => '2026-01-15',
-                'avatar' => 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=150&h=150&q=80',
-                'dob' => '1995-05-12',
-                'gender' => 'Nam',
-                'height' => 175,
-                'weight' => 70,
-                'blood_type' => 'O+',
-                'bmi' => 22.9,
-                'heart_rate' => 72,
-                'spo2' => 99,
-                'activity' => [
-                    ['date' => '2026-05-28', 'steps' => 8400, 'sleep' => 7.5],
-                    ['date' => '2026-05-27', 'steps' => 10200, 'sleep' => 8.0],
-                    ['date' => '2026-05-26', 'steps' => 7200, 'sleep' => 6.8]
-                ]
-            ],
-            [
-                'id' => 2,
-                'name' => 'Trần Thị B',
-                'email' => 'tranthib@gmail.com',
-                'phone' => '0987654321',
-                'plan' => 'Pro',
-                'status' => 'active',
-                'created_at' => '2026-02-20',
-                'avatar' => 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=150&h=150&q=80',
-                'dob' => '1998-10-05',
-                'gender' => 'Nữ',
-                'height' => 160,
-                'weight' => 52,
-                'blood_type' => 'A+',
-                'bmi' => 20.3,
-                'heart_rate' => 78,
-                'spo2' => 98,
-                'activity' => [
-                    ['date' => '2026-05-28', 'steps' => 6100, 'sleep' => 8.2],
-                    ['date' => '2026-05-27', 'steps' => 5400, 'sleep' => 7.0],
-                    ['date' => '2026-05-26', 'steps' => 9000, 'sleep' => 7.5]
-                ]
-            ],
-            [
-                'id' => 3,
-                'name' => 'Lê Hoàng C',
-                'email' => 'lehoangc@gmail.com',
-                'phone' => '0905556677',
-                'plan' => 'Free',
-                'status' => 'blocked',
-                'created_at' => '2026-03-02',
-                'avatar' => 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=150&h=150&q=80',
-                'dob' => '1990-12-25',
-                'gender' => 'Nam',
-                'height' => 180,
-                'weight' => 85,
-                'blood_type' => 'B-',
-                'bmi' => 26.2,
-                'heart_rate' => 82,
-                'spo2' => 96,
-                'activity' => [
-                    ['date' => '2026-05-28', 'steps' => 3200, 'sleep' => 5.5],
-                    ['date' => '2026-05-27', 'steps' => 4100, 'sleep' => 6.0],
-                    ['date' => '2026-05-26', 'steps' => 3800, 'sleep' => 5.8]
-                ]
-            ],
-            [
-                'id' => 4,
-                'name' => 'Phạm Minh D',
-                'email' => 'phamminhd@gmail.com',
-                'phone' => '0933445566',
-                'plan' => 'Premium',
-                'status' => 'active',
-                'created_at' => '2026-04-10',
-                'avatar' => 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=150&h=150&q=80',
-                'dob' => '1993-08-14',
-                'gender' => 'Nữ',
-                'height' => 165,
-                'weight' => 56,
-                'blood_type' => 'AB+',
-                'bmi' => 20.6,
-                'heart_rate' => 68,
-                'spo2' => 99,
-                'activity' => [
-                    ['date' => '2026-05-28', 'steps' => 11000, 'sleep' => 8.0],
-                    ['date' => '2026-05-27', 'steps' => 12500, 'sleep' => 7.8],
-                    ['date' => '2026-05-26', 'steps' => 9500, 'sleep' => 8.5]
-                ]
-            ],
-            [
-                'id' => 5,
-                'name' => 'Vũ Hải E',
-                'email' => 'vuhaie@gmail.com',
-                'phone' => '0977889900',
-                'plan' => 'Free',
-                'status' => 'active',
-                'created_at' => '2026-05-01',
-                'avatar' => 'https://images.unsplash.com/photo-1517841905240-472988babdf9?auto=format&fit=crop&w=150&h=150&q=80',
-                'dob' => '1987-03-30',
-                'gender' => 'Nam',
-                'height' => 170,
-                'weight' => 74,
-                'blood_type' => 'O-',
-                'bmi' => 25.6,
-                'heart_rate' => 74,
-                'spo2' => 97,
-                'activity' => [
-                    ['date' => '2026-05-28', 'steps' => 4500, 'sleep' => 6.2],
-                    ['date' => '2026-05-27', 'steps' => 5000, 'sleep' => 6.5],
-                    ['date' => '2026-05-26', 'steps' => 4200, 'sleep' => 7.0]
-                ]
-            ]
-        ];
+        // 2. Danh sách người dùng từ Database
+        $users = User::all();
+        $usersList = $users->map(function ($user) {
+            // Lấy 3 chỉ số sức khỏe gần nhất
+            $recentMetrics = HealthMetric::where('user_id', $user->id)
+                ->orderBy('recorded_at', 'desc')
+                ->take(3)
+                ->get();
+
+            $activity = $recentMetrics->map(function ($metric) {
+                return [
+                    'date' => $metric->recorded_at,
+                    'steps' => $metric->steps ?? 0,
+                    'sleep' => (float)($metric->sleep_hours ?? 0)
+                ];
+            })->toArray();
+
+            // Tính BMI
+            $bmi = 0;
+            if ($user->height > 0 && $user->weight > 0) {
+                $heightInMeters = $user->height / 100;
+                $bmi = round($user->weight / ($heightInMeters * $heightInMeters), 1);
+            }
+
+            return [
+                'id' => $user->id,
+                'name' => $user->name,
+                'email' => $user->email,
+                'phone' => $user->phone ?? 'N/A',
+                'plan' => $user->plan ?? 'Free',
+                'status' => $user->status ?? 'active',
+                'created_at' => $user->created_at ? $user->created_at->format('Y-m-d') : 'N/A',
+                'avatar' => $user->avatar ? (str_starts_with($user->avatar, 'http') ? $user->avatar : asset('storage/' . $user->avatar)) : 'https://ui-avatars.com/api/?name=' . urlencode($user->name) . '&background=6366f1&color=fff',
+                'dob' => $user->dob ?? 'N/A',
+                'gender' => $user->gender ?? 'N/A',
+                'height' => (float)($user->height ?? 0),
+                'weight' => (float)($user->weight ?? 0),
+                'blood_type' => $user->blood_type ?? 'N/A',
+                'bmi' => $bmi,
+                'heart_rate' => $user->heart_rate ?? 0,
+                'spo2' => $user->spo2 ?? 0,
+                'activity' => $activity
+            ];
+        })->toArray();
 
         // 3. Danh sách gói dịch vụ
         $packagesList = [
@@ -160,7 +129,7 @@ class AdminController extends Controller
                 'name' => 'Free',
                 'price' => 0,
                 'duration' => 'Trọn đời',
-                'subscribers' => 84,
+                'subscribers' => User::where('plan', 'Free')->count(),
                 'status' => 'active',
                 'features' => ['Theo dõi sức khỏe cơ bản', 'AI Chatbot 20 câu/ngày', 'Báo cáo tuần cơ bản'],
                 'color' => 'from-slate-500 to-slate-700',
@@ -171,7 +140,7 @@ class AdminController extends Controller
                 'name' => 'Pro',
                 'price' => 149000,
                 'duration' => '1 tháng',
-                'subscribers' => 45,
+                'subscribers' => User::where('plan', 'Pro')->count(),
                 'status' => 'active',
                 'features' => ['Theo dõi sức khỏe chi tiết', 'AI Chatbot không giới hạn', 'Thực đơn AI & Luyện tập AI', 'Hỗ trợ 24/7'],
                 'color' => 'from-indigo-500 to-blue-600',
@@ -182,7 +151,7 @@ class AdminController extends Controller
                 'name' => 'Premium',
                 'price' => 299000,
                 'duration' => '1 tháng',
-                'subscribers' => 28,
+                'subscribers' => User::where('plan', 'Premium')->count(),
                 'status' => 'active',
                 'features' => ['Tất cả tính năng của gói Pro', 'Lịch khám ưu tiên với bác sĩ', 'Phân tích Gen & Đề xuất nâng cao', 'Trợ lý Y tế riêng bằng AI'],
                 'color' => 'from-violet-600 to-purple-800',
@@ -248,6 +217,8 @@ class AdminController extends Controller
             ['time' => '3 giờ trước', 'icon' => 'alert-triangle', 'color' => 'text-rose-500 bg-rose-500/10', 'text' => 'Hệ thống AI ghi nhận tải lượng CPU cao (>85%).'],
         ];
 
+        $doctorsList = Doctor::all()->toArray();
+
         return view('admin.index', compact(
             'totalUsers',
             'activeToday',
@@ -260,7 +231,8 @@ class AdminController extends Controller
             'feedbacksList',
             'recentTransactions',
             'monthlyRevenue',
-            'activityLogs'
+            'activityLogs',
+            'doctorsList'
         ));
     }
 
@@ -285,5 +257,109 @@ class AdminController extends Controller
     {
         session()->forget('admin_logged_in');
         return redirect()->route('admin.index');
+    }
+
+    public function toggleUserStatus($id)
+    {
+        if (!session()->has('admin_logged_in')) {
+            return response()->json(['success' => false, 'message' => 'Quyền truy cập bị từ chối!'], 403);
+        }
+
+        $user = User::findOrFail($id);
+        $user->status = ($user->status === 'blocked') ? 'active' : 'blocked';
+        $user->save();
+
+        $actionText = ($user->status === 'blocked') ? 'khóa' : 'mở khóa';
+        return response()->json([
+            'success' => true,
+            'message' => "Đã {$actionText} thành công tài khoản {$user->name}!",
+            'status' => $user->status
+        ]);
+    }
+
+    public function deleteUser($id)
+    {
+        if (!session()->has('admin_logged_in')) {
+            return response()->json(['success' => false, 'message' => 'Quyền truy cập bị từ chối!'], 403);
+        }
+
+        $user = User::findOrFail($id);
+        $name = $user->name;
+        $user->delete();
+
+        return response()->json([
+            'success' => true,
+            'message' => "Đã xóa thành công tài khoản {$name}!"
+        ]);
+    }
+
+    public function saveDoctor(Request $request)
+    {
+        if (!session()->has('admin_logged_in')) {
+            return response()->json(['success' => false, 'message' => 'Quyền truy cập bị từ chối!'], 403);
+        }
+
+        $request->validate([
+            'name' => 'required',
+            'specialty' => 'required',
+            'place' => 'required',
+        ]);
+
+        if ($request->has('id') && $request->id) {
+            $doctor = Doctor::findOrFail($request->id);
+            $message = 'Cập nhật thông tin bác sĩ thành công!';
+        } else {
+            $doctor = new Doctor();
+            $message = 'Thêm bác sĩ mới thành công!';
+        }
+
+        $doctor->name = $request->name;
+        $doctor->specialty = $request->specialty;
+        $doctor->email = $request->email;
+        $doctor->phone = $request->phone;
+        $doctor->place = $request->place;
+        $doctor->avatar = $request->avatar ?: 'https://ui-avatars.com/api/?name=' . urlencode($request->name) . '&background=10b981&color=fff';
+        $doctor->status = $request->status ?: 'active';
+        $doctor->save();
+
+        return response()->json([
+            'success' => true,
+            'message' => $message,
+            'doctor' => $doctor
+        ]);
+    }
+
+    public function toggleDoctorStatus($id)
+    {
+        if (!session()->has('admin_logged_in')) {
+            return response()->json(['success' => false, 'message' => 'Quyền truy cập bị từ chối!'], 403);
+        }
+
+        $doctor = Doctor::findOrFail($id);
+        $doctor->status = ($doctor->status === 'blocked') ? 'active' : 'blocked';
+        $doctor->save();
+
+        $actionText = ($doctor->status === 'blocked') ? 'khóa' : 'mở khóa';
+        return response()->json([
+            'success' => true,
+            'message' => "Đã {$actionText} thành công bác sĩ {$doctor->name}!",
+            'status' => $doctor->status
+        ]);
+    }
+
+    public function deleteDoctor($id)
+    {
+        if (!session()->has('admin_logged_in')) {
+            return response()->json(['success' => false, 'message' => 'Quyền truy cập bị từ chối!'], 403);
+        }
+
+        $doctor = Doctor::findOrFail($id);
+        $name = $doctor->name;
+        $doctor->delete();
+
+        return response()->json([
+            'success' => true,
+            'message' => "Đã xóa thành công bác sĩ {$name}!"
+        ]);
     }
 }

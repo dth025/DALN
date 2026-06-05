@@ -122,6 +122,10 @@
                 <button onclick="switchTab('users')" id="nav-users" class="nav-btn w-full flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-semibold transition-all text-slate-400 hover:bg-white/5 hover:text-white">
                     <i data-lucide="users" class="h-4 w-4"></i> Quản lý người dùng
                 </button>
+
+                <button onclick="switchTab('doctors')" id="nav-doctors" class="nav-btn w-full flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-semibold transition-all text-slate-400 hover:bg-white/5 hover:text-white">
+                    <i data-lucide="stethoscope" class="h-4 w-4"></i> Quản lý bác sĩ
+                </button>
                 
                 <button onclick="switchTab('packages')" id="nav-packages" class="nav-btn w-full flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-semibold transition-all text-slate-400 hover:bg-white/5 hover:text-white">
                     <i data-lucide="credit-card" class="h-4 w-4"></i> Quản lý gói dịch vụ
@@ -492,11 +496,52 @@
                         
                         <!-- Table Footer Pagination -->
                         <div class="p-4 bg-card/35 border-t border-border/20 flex items-center justify-between">
-                            <span class="text-xs text-muted-foreground font-semibold">Hiển thị <span class="font-bold text-foreground">1-5</span> trong <span class="font-bold text-foreground">5</span> người dùng</span>
+                            <span class="text-xs text-muted-foreground font-semibold">Hiển thị <span class="font-bold text-foreground" id="users-count-showing">0</span> trong <span class="font-bold text-foreground" id="users-count-total">0</span> người dùng</span>
                             <div class="inline-flex gap-2">
                                 <button class="h-8 px-3 rounded-lg border border-border/50 text-[10px] font-black uppercase bg-background/50 hover:bg-accent">Trang trước</button>
                                 <button class="h-8 px-3 rounded-lg border border-border/50 text-[10px] font-black uppercase bg-background/50 hover:bg-accent">Trang sau</button>
                             </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- ================= TAB: DOCTORS ================= -->
+                <section id="tab-doctors" class="tab-pane space-y-6 hidden">
+                    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                        <div>
+                            <h2 class="text-2xl font-black tracking-tight">Quản lý Bác Sĩ</h2>
+                            <p class="text-xs text-muted-foreground mt-1">Danh sách bác sĩ cộng tác trên hệ thống y tế.</p>
+                        </div>
+                        <div class="flex flex-wrap gap-2.5">
+                            <button onclick="openNewDoctorModal()" class="group inline-flex items-center gap-2 rounded-2xl gradient-primary px-5 py-3 text-xs font-semibold text-white shadow-glow transition-transform hover:scale-[1.03]">
+                                <i data-lucide="plus" class="h-4 w-4"></i> Thêm bác sĩ mới
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Doctors Table Card -->
+                    <div class="glass rounded-3xl border border-border/40 overflow-hidden shadow-soft">
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-left border-collapse">
+                                <thead>
+                                    <tr class="border-b border-border/30 bg-card/40 text-[10px] font-black uppercase tracking-wider text-muted-foreground">
+                                        <th class="p-4 pl-6">Họ tên bác sĩ</th>
+                                        <th class="p-4">Chuyên khoa</th>
+                                        <th class="p-4">Địa điểm làm việc</th>
+                                        <th class="p-4">Liên hệ</th>
+                                        <th class="p-4 text-center">Trạng thái</th>
+                                        <th class="p-4 text-right pr-6">Hành động</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="doctors-table-body" class="divide-y divide-border/20 text-xs font-semibold">
+                                    <!-- Dynamic rows loaded from javascript array -->
+                                </tbody>
+                            </table>
+                        </div>
+                        
+                        <!-- Table Footer Pagination -->
+                        <div class="p-4 bg-card/35 border-t border-border/20 flex items-center justify-between">
+                            <span class="text-xs text-muted-foreground font-semibold">Hiển thị <span class="font-bold text-foreground" id="doctors-count-showing">0</span> trong <span class="font-bold text-foreground" id="doctors-count-total">0</span> bác sĩ</span>
                         </div>
                     </div>
                 </section>
@@ -956,6 +1001,53 @@
         </div>
     </div>
 
+    <!-- Doctor Modal Add/Edit -->
+    <div id="doctorModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-background/80 backdrop-blur-md opacity-0 pointer-events-none transition-all duration-300">
+        <div onclick="closeDoctorModal()" class="absolute inset-0 cursor-pointer"></div>
+        <div class="relative w-full max-w-lg overflow-hidden rounded-[2.5rem] border border-border/50 bg-card/95 p-6 shadow-elevated backdrop-blur-2xl transition-all duration-300 transform scale-95 opacity-0" id="doctorModalContent">
+            <button onclick="closeDoctorModal()" class="absolute right-4 top-4 flex h-9 w-9 items-center justify-center rounded-full border border-border bg-background/50 text-muted-foreground backdrop-blur-sm hover:bg-accent">
+                <i data-lucide="x" class="h-4 w-4"></i>
+            </button>
+
+            <h3 id="doctor-modal-title" class="text-lg font-bold text-foreground mb-6">Thêm bác sĩ mới</h3>
+            
+            <div class="space-y-4">
+                <div class="space-y-1.5">
+                    <label class="text-xs font-bold uppercase tracking-wider text-muted-foreground">Họ tên bác sĩ</label>
+                    <input id="doc-input-name" class="h-10 text-xs w-full rounded-xl border border-border/50 bg-background px-3 font-semibold outline-none focus:border-primary">
+                </div>
+                <div class="grid grid-cols-2 gap-4">
+                    <div class="space-y-1.5">
+                        <label class="text-xs font-bold uppercase tracking-wider text-muted-foreground">Chuyên khoa</label>
+                        <input id="doc-input-specialty" class="h-10 text-xs w-full rounded-xl border border-border/50 bg-background px-3 font-semibold outline-none focus:border-primary">
+                    </div>
+                    <div class="space-y-1.5">
+                        <label class="text-xs font-bold uppercase tracking-wider text-muted-foreground">Địa điểm / Bệnh viện</label>
+                        <input id="doc-input-place" class="h-10 text-xs w-full rounded-xl border border-border/50 bg-background px-3 font-semibold outline-none focus:border-primary">
+                    </div>
+                </div>
+                <div class="grid grid-cols-2 gap-4">
+                    <div class="space-y-1.5">
+                        <label class="text-xs font-bold uppercase tracking-wider text-muted-foreground">Email</label>
+                        <input id="doc-input-email" type="email" class="h-10 text-xs w-full rounded-xl border border-border/50 bg-background px-3 font-semibold outline-none focus:border-primary">
+                    </div>
+                    <div class="space-y-1.5">
+                        <label class="text-xs font-bold uppercase tracking-wider text-muted-foreground">Số điện thoại</label>
+                        <input id="doc-input-phone" class="h-10 text-xs w-full rounded-xl border border-border/50 bg-background px-3 font-semibold outline-none focus:border-primary">
+                    </div>
+                </div>
+                <div class="space-y-1.5">
+                    <label class="text-xs font-bold uppercase tracking-wider text-muted-foreground">Ảnh đại diện (Link ảnh)</label>
+                    <input id="doc-input-avatar" placeholder="https://..." class="h-10 text-xs w-full rounded-xl border border-border/50 bg-background px-3 font-semibold outline-none focus:border-primary">
+                </div>
+            </div>
+
+            <div class="mt-8 pt-4 border-t border-border/20 flex gap-2.5 justify-end">
+                <button onclick="closeDoctorModal()" class="h-10 text-xs font-semibold rounded-xl border border-border/60 bg-background/50 px-5 text-center transition-colors">Hủy</button>
+                <button onclick="saveDoctor()" class="h-10 text-xs font-semibold rounded-xl gradient-primary px-5 text-white shadow-glow hover:scale-[1.02] transition-transform">Lưu lại</button>
+            </div>
+        </div>
+    </div>
 
     <!-- ================= JAVASCRIPT STATE ENGINE ================= -->
     <script>
@@ -966,9 +1058,11 @@
         let users = @json($usersList);
         let packages = @json($packagesList);
         let feedbacks = @json($feedbacksList);
+        let doctors = @json($doctorsList);
         let selectedUserId = null;
         let selectedPackageId = null;
         let selectedFeedbackId = null;
+        let selectedDoctorId = null;
 
         // Switch Tabs beautifully
         function switchTab(tabId) {
@@ -994,6 +1088,9 @@
             if (tabId === 'users') {
                 renderUsersTable();
             }
+            if (tabId === 'doctors') {
+                renderDoctorsTable();
+            }
         }
 
         // Toggle Sidebar on mobile
@@ -1011,11 +1108,13 @@
 
             const planFilter = document.getElementById('filter-plan').value;
             const statusFilter = document.getElementById('filter-status').value;
+            let renderedCount = 0;
 
             users.forEach(user => {
                 if (planFilter !== 'all' && user.plan !== planFilter) return;
                 if (statusFilter !== 'all' && user.status !== statusFilter) return;
 
+                renderedCount++;
                 const row = document.createElement('tr');
                 row.className = "hover:bg-muted/10 transition-colors";
                 
@@ -1052,6 +1151,15 @@
                 `;
                 body.appendChild(row);
             });
+
+            // Update pagination text
+            const showingEl = document.getElementById('users-count-showing');
+            const totalEl = document.getElementById('users-count-total');
+            if (showingEl && totalEl) {
+                showingEl.innerText = renderedCount > 0 ? `1-${renderedCount}` : '0';
+                totalEl.innerText = users.length;
+            }
+
             lucide.createIcons();
         }
 
@@ -1159,29 +1267,269 @@
 
         // Toggle Account status
         function toggleBlockUser() {
-            const user = users.find(u => u.id === selectedUserId);
-            if (!user) return;
-
-            if (user.status === 'active') {
-                user.status = 'blocked';
-                alert(`Đã khóa thành công tài khoản ${user.name}`);
-            } else {
-                user.status = 'active';
-                alert(`Đã mở khóa thành công tài khoản ${user.name}`);
-            }
-            closeUserModal();
-            renderUsersTable();
+            if (!selectedUserId) return;
+            
+            fetch(`/admin/users/${selectedUserId}/toggle-status`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert(data.message);
+                    closeUserModal();
+                    location.reload();
+                } else {
+                    alert(data.message || 'Đã xảy ra lỗi!');
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Không thể kết nối đến máy chủ!');
+            });
         }
 
         function deleteUser() {
+            if (!selectedUserId) return;
+            
             const user = users.find(u => u.id === selectedUserId);
             if (!user) return;
 
             if (confirm(`Bạn có chắc chắn muốn xóa tài khoản ${user.name} vĩnh viễn?`)) {
-                users = users.filter(u => u.id !== selectedUserId);
-                alert('Đã xóa thành công người dùng!');
-                closeUserModal();
-                renderUsersTable();
+                fetch(`/admin/users/${selectedUserId}`, {
+                    method: 'DELETE',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                    }
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        alert(data.message);
+                        closeUserModal();
+                        location.reload();
+                    } else {
+                        alert(data.message || 'Đã xảy ra lỗi!');
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    alert('Không thể kết nối đến máy chủ!');
+                });
+            }
+        }
+
+        // ------------------ TAB: DOCTORS MANAGEMENT ------------------
+        function renderDoctorsTable() {
+            const body = document.getElementById('doctors-table-body');
+            if (!body) return;
+            body.innerHTML = '';
+
+            let renderedCount = 0;
+
+            doctors.forEach(doctor => {
+                renderedCount++;
+                const row = document.createElement('tr');
+                row.className = "hover:bg-muted/10 transition-colors";
+                
+                const statusBadge = doctor.status === 'active' 
+                    ? '<span class="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-400 bg-emerald-400/15 px-2.5 py-0.5 rounded-full">Hoạt động</span>'
+                    : '<span class="inline-flex items-center gap-1 text-[10px] font-bold text-rose-400 bg-rose-400/15 px-2.5 py-0.5 rounded-full">Tạm ngưng</span>';
+
+                row.innerHTML = `
+                    <td class="p-4 pl-6 flex items-center gap-3">
+                        <img src="${doctor.avatar}" alt="avatar" class="h-9 w-9 rounded-full object-cover border border-border/50">
+                        <div>
+                            <p class="font-bold text-foreground">${doctor.name}</p>
+                        </div>
+                    </td>
+                    <td class="p-4">
+                        <p class="font-semibold text-foreground/80">${doctor.specialty}</p>
+                    </td>
+                    <td class="p-4">
+                        <p class="font-semibold text-foreground/80">${doctor.place}</p>
+                    </td>
+                    <td class="p-4 font-semibold text-foreground/80">
+                        <p>${doctor.email || 'N/A'}</p>
+                        <p class="text-[10px] text-muted-foreground mt-0.5">${doctor.phone || 'N/A'}</p>
+                    </td>
+                    <td class="p-4 text-center">${statusBadge}</td>
+                    <td class="p-4 text-right pr-6">
+                        <div class="inline-flex gap-2">
+                            <button onclick="openEditDoctorModal(${doctor.id})" class="h-8 px-3 rounded-lg border border-border/50 text-[10px] font-black uppercase bg-background/50 hover:bg-accent text-primary">Sửa</button>
+                            <button onclick="toggleBlockDoctor(${doctor.id})" class="h-8 px-3 rounded-lg border border-border/50 text-[10px] font-black uppercase bg-background/50 hover:bg-accent ${doctor.status === 'active' ? 'text-amber-500' : 'text-emerald-500'}">${doctor.status === 'active' ? 'Khóa' : 'Kích hoạt'}</button>
+                            <button onclick="deleteDoctor(${doctor.id})" class="h-8 px-3 rounded-lg border border-border/50 text-[10px] font-black uppercase bg-background/50 hover:bg-accent text-rose-500">Xóa</button>
+                        </div>
+                    </td>
+                `;
+                body.appendChild(row);
+            });
+
+            // Update count text
+            const showingEl = document.getElementById('doctors-count-showing');
+            const totalEl = document.getElementById('doctors-count-total');
+            if (showingEl) {
+                showingEl.innerText = renderedCount > 0 ? `1-${renderedCount}` : '0';
+            }
+            if (totalEl) {
+                totalEl.innerText = doctors.length;
+            }
+
+            lucide.createIcons();
+        }
+
+        function openNewDoctorModal() {
+            selectedDoctorId = null;
+            document.getElementById('doctor-modal-title').innerText = 'Thêm bác sĩ mới';
+            document.getElementById('doc-input-name').value = '';
+            document.getElementById('doc-input-specialty').value = '';
+            document.getElementById('doc-input-place').value = '';
+            document.getElementById('doc-input-email').value = '';
+            document.getElementById('doc-input-phone').value = '';
+            document.getElementById('doc-input-avatar').value = '';
+
+            triggerDoctorModal(true);
+        }
+
+        function openEditDoctorModal(docId) {
+            selectedDoctorId = docId;
+            const doctor = doctors.find(d => d.id === docId);
+            if (!doctor) return;
+
+            document.getElementById('doctor-modal-title').innerText = 'Chỉnh sửa bác sĩ';
+            document.getElementById('doc-input-name').value = doctor.name;
+            document.getElementById('doc-input-specialty').value = doctor.specialty;
+            document.getElementById('doc-input-place').value = doctor.place;
+            document.getElementById('doc-input-email').value = doctor.email || '';
+            document.getElementById('doc-input-phone').value = doctor.phone || '';
+            document.getElementById('doc-input-avatar').value = doctor.avatar || '';
+
+            triggerDoctorModal(true);
+        }
+
+        function triggerDoctorModal(show) {
+            const modal = document.getElementById('doctorModal');
+            const content = document.getElementById('doctorModalContent');
+            if (!modal || !content) return;
+            if (show) {
+                modal.classList.remove('opacity-0', 'pointer-events-none');
+                modal.classList.add('opacity-100', 'pointer-events-auto');
+                content.classList.remove('scale-95', 'opacity-0');
+                content.classList.add('scale-100', 'opacity-100');
+            } else {
+                modal.classList.add('opacity-0', 'pointer-events-none');
+                modal.classList.remove('opacity-100', 'pointer-events-auto');
+                content.classList.add('scale-95', 'opacity-0');
+                content.classList.remove('scale-100', 'opacity-100');
+            }
+        }
+
+        function closeDoctorModal() {
+            triggerDoctorModal(false);
+        }
+
+        function saveDoctor() {
+            const name = document.getElementById('doc-input-name').value;
+            const specialty = document.getElementById('doc-input-specialty').value;
+            const place = document.getElementById('doc-input-place').value;
+            const email = document.getElementById('doc-input-email').value;
+            const phone = document.getElementById('doc-input-phone').value;
+            const avatar = document.getElementById('doc-input-avatar').value;
+
+            if (!name || !specialty || !place) {
+                alert('Vui lòng nhập đầy đủ họ tên, chuyên khoa và địa điểm!');
+                return;
+            }
+
+            const payload = {
+                name: name,
+                specialty: specialty,
+                place: place,
+                email: email,
+                phone: phone,
+                avatar: avatar
+            };
+
+            if (selectedDoctorId !== null) {
+                payload.id = selectedDoctorId;
+            }
+
+            fetch('/admin/doctors/save', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                },
+                body: JSON.stringify(payload)
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert(data.message);
+                    closeDoctorModal();
+                    location.reload();
+                } else {
+                    alert(data.message || 'Đã xảy ra lỗi!');
+                }
+            })
+            .catch(error => {
+                console.error('Error saving doctor:', error);
+                alert('Không thể kết nối đến máy chủ!');
+            });
+        }
+
+        function toggleBlockDoctor(docId) {
+            fetch(`/admin/doctors/${docId}/toggle-status`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert(data.message);
+                    location.reload();
+                } else {
+                    alert(data.message || 'Đã xảy ra lỗi!');
+                }
+            })
+            .catch(error => {
+                console.error('Error toggling status:', error);
+                alert('Không thể kết nối đến máy chủ!');
+            });
+        }
+
+        function deleteDoctor(docId) {
+            const doctor = doctors.find(d => d.id === docId);
+            if (!doctor) return;
+
+            if (confirm(`Bạn có chắc chắn muốn xóa bác sĩ ${doctor.name} vĩnh viễn?`)) {
+                fetch(`/admin/doctors/${docId}`, {
+                    method: 'DELETE',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                    }
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        alert(data.message);
+                        location.reload();
+                    } else {
+                        alert(data.message || 'Đã xảy ra lỗi!');
+                    }
+                })
+                .catch(error => {
+                    console.error('Error deleting doctor:', error);
+                    alert('Không thể kết nối đến máy chủ!');
+                });
             }
         }
 

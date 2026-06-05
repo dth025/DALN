@@ -3,12 +3,11 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
-
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 
-#[Fillable(['user_id', 'doctor_id', 'doctor_name', 'specialty', 'appointment_date', 'status'])]
-class Appointment extends Model
+#[Fillable(['doctor_id', 'user_id', 'diagnosis', 'symptoms', 'exam_result', 'prescribed_medicine', 'treatment_instructions', 'notes', 'recorded_at'])]
+class MedicalRecord extends Model
 {
     use HasFactory;
 

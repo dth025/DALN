@@ -12,14 +12,44 @@ use App\Http\Controllers\PricingController;
 use App\Http\Controllers\AdminController;
 use App\Http\Controllers\FeedbackController;
 use App\Http\Controllers\NotificationController;
+use App\Http\Controllers\DoctorController;
+use App\Http\Controllers\MedicalRecordController;
+use App\Http\Controllers\ConsultationController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', [HomeController::class, 'index'])->name('home');
+
+// Development Self-Healing Migration for Doctor Tables
+Route::get('/doctor/dev-migrate', [DoctorController::class, 'devMigrate'])->name('doctor.devMigrate');
 
 // Admin Routes (Independent Session Auth)
 Route::get('/admin', [AdminController::class, 'index'])->name('admin.index');
 Route::post('/admin', [AdminController::class, 'login'])->name('admin.login.submit');
 Route::post('/admin/logout', [AdminController::class, 'logout'])->name('admin.logout');
+Route::post('/admin/users/{id}/toggle-status', [AdminController::class, 'toggleUserStatus'])->name('admin.users.toggleStatus');
+Route::delete('/admin/users/{id}', [AdminController::class, 'deleteUser'])->name('admin.users.delete');
+Route::post('/admin/doctors/save', [AdminController::class, 'saveDoctor'])->name('admin.doctors.save');
+Route::post('/admin/doctors/{id}/toggle-status', [AdminController::class, 'toggleDoctorStatus'])->name('admin.doctors.toggleStatus');
+Route::delete('/admin/doctors/{id}', [AdminController::class, 'deleteDoctor'])->name('admin.doctors.delete');
+
+// Doctor Routes (Independent Session Auth)
+Route::get('/doctor/register', [DoctorController::class, 'showRegister'])->name('doctor.register');
+Route::post('/doctor/register', [DoctorController::class, 'register'])->name('doctor.register.submit');
+Route::get('/doctor/login', [DoctorController::class, 'showLogin'])->name('doctor.login');
+Route::post('/doctor/login', [DoctorController::class, 'login'])->name('doctor.login.submit');
+Route::post('/doctor/logout', [DoctorController::class, 'logout'])->name('doctor.logout');
+Route::get('/doctor/dashboard', [DoctorController::class, 'index'])->name('doctor.dashboard');
+Route::post('/doctor/profile', [DoctorController::class, 'updateProfile'])->name('doctor.profile.update');
+Route::post('/doctor/appointments/{id}/status', [DoctorController::class, 'toggleAppointmentStatus'])->name('doctor.appointments.status');
+
+// Medical Records Routes
+Route::post('/doctor/medical-records/save', [MedicalRecordController::class, 'saveRecord'])->name('doctor.medicalRecords.save');
+Route::get('/doctor/medical-records/history/{userId}', [MedicalRecordController::class, 'getHistory'])->name('doctor.medicalRecords.history');
+
+// Consultations Routes
+Route::get('/doctor/consultations/chat/{userId}', [ConsultationController::class, 'getMessages'])->name('doctor.consultations.messages');
+Route::post('/doctor/consultations/send', [ConsultationController::class, 'sendMessage'])->name('doctor.consultations.send');
+
 
 Route::middleware('auth')->group(function () {
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
@@ -29,6 +59,7 @@ Route::middleware('auth')->group(function () {
     Route::get('/health/qr-poll', [HealthController::class, 'pollQrData'])->name('health.qr.poll');
 
     Route::get('/workout', [WorkoutController::class, 'index'])->name('workout');
+    Route::post('/workout/log', [WorkoutController::class, 'logWorkout'])->name('workout.log');
     Route::get('/appointments', [AppointmentController::class, 'index'])->name('appointments');
     Route::get('/pricing', [PricingController::class, 'index'])->name('pricing');
     Route::get('/chatbot', [ChatbotController::class, 'index'])->name('chatbot');
