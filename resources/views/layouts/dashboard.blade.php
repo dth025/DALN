@@ -85,6 +85,10 @@
                                 <i data-lucide="dumbbell" class="h-4 w-4"></i>
                                 <span>Luyện tập</span>
                             </a>
+                            <a href="{{ route('menu') }}" class="flex items-center gap-2 rounded-full px-4 py-2 text-sm font-medium transition-all {{ request()->routeIs('menu') ? 'bg-primary/10 text-primary shadow-sm' : 'text-muted-foreground hover:bg-sidebar-accent hover:text-foreground' }}">
+                                <i data-lucide="salad" class="h-4 w-4"></i>
+                                <span>Thực đơn</span>
+                            </a>
                             <a href="{{ route('appointments') }}" class="flex items-center gap-2 rounded-full px-4 py-2 text-sm font-medium transition-all {{ request()->routeIs('appointments') ? 'bg-primary/10 text-primary shadow-sm' : 'text-muted-foreground hover:bg-sidebar-accent hover:text-foreground' }}">
                                 <i data-lucide="calendar-days" class="h-4 w-4"></i>
                                 <span>Lịch khám</span>
@@ -244,6 +248,9 @@
                 </a>
                 <a href="{{ route('workout') }}" class="flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-medium {{ request()->routeIs('workout') ? 'bg-primary text-primary-foreground shadow-glow' : 'hover:bg-sidebar-accent' }}">
                     <i data-lucide="dumbbell" class="h-5 w-5"></i> Luyện tập AI
+                </a>
+                <a href="{{ route('menu') }}" class="flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-medium {{ request()->routeIs('menu') ? 'bg-primary text-primary-foreground shadow-glow' : 'hover:bg-sidebar-accent' }}">
+                    <i data-lucide="salad" class="h-5 w-5"></i> Thực đơn
                 </a>
                 <a href="{{ route('appointments') }}" class="flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-medium {{ request()->routeIs('appointments') ? 'bg-primary text-primary-foreground shadow-glow' : 'hover:bg-sidebar-accent' }}">
                     <i data-lucide="calendar-days" class="h-5 w-5"></i> Lịch khám

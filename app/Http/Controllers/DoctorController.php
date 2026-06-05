@@ -227,6 +227,46 @@ class DoctorController extends Controller
         ]);
     }
 
+    public function saveRecommendation(Request $request)
+    {
+        if (!session()->has('doctor_logged_in')) {
+            return response()->json(['success' => false, 'message' => 'Quyền truy cập bị từ chối!'], 403);
+        }
+
+        $doctorSession = session('doctor_logged_in');
+        $doctorId = is_array($doctorSession) ? ($doctorSession['id'] ?? null) : ($doctorSession->id ?? null);
+        if (!$doctorId) {
+            return response()->json(['success' => false, 'message' => 'Quyền truy cập bị từ chối!'], 403);
+        }
+
+        $data = $request->validate([
+            'user_id' => 'required|exists:users,id',
+            'advice' => 'required|string|max:2000',
+            'meals' => 'nullable|string', // JSON string
+        ]);
+
+        $meals = null;
+        if (!empty($data['meals'])) {
+            try {
+                $decoded = json_decode($data['meals'], true);
+                if (json_last_error() === JSON_ERROR_NONE) {
+                    $meals = $decoded;
+                }
+            } catch (\Exception $e) {
+                $meals = null;
+            }
+        }
+
+        $rec = \App\Models\DoctorRecommendation::create([
+            'doctor_id' => $doctorId,
+            'user_id' => $data['user_id'],
+            'advice' => $data['advice'],
+            'meals' => $meals,
+        ]);
+
+        return response()->json(['success' => true, 'message' => 'Lưu đề xuất thành công', 'recommendation' => $rec]);
+    }
+
     public function toggleAppointmentStatus(Request $request, $id)
     {
         if (!session()->has('doctor_logged_in')) {

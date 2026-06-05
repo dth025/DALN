@@ -302,6 +302,92 @@
                     </div>
                 </section>
 
+                                <!-- Recommend Modal -->
+                                <div id="recommendModal" style="display:none;" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50">
+                                    <div class="relative w-full max-w-2xl rounded-2xl bg-slate-900 p-6 shadow-lg text-slate-200">
+                                        <button onclick="closeRecommendModal()" class="absolute right-3 top-3 text-slate-400">✕</button>
+                                        <h3 class="text-lg font-semibold mb-3">Gợi ý chế độ ăn cho bệnh nhân</h3>
+
+                                        <form id="recommendForm">
+                                            @csrf
+                                            <input type="hidden" id="rec_user_id" name="user_id" />
+                                            <div class="mb-3">
+                                                <label class="block text-sm text-slate-400 mb-1">Bệnh nhân</label>
+                                                <input type="text" id="rec_user_name" class="w-full rounded-lg border border-slate-700 bg-slate-800 px-3 py-2 text-slate-200" readonly />
+                                            </div>
+                                            <div class="mb-3">
+                                                <label class="block text-sm text-slate-400 mb-1">Lời khuyên (advice)</label>
+                                                <textarea id="rec_advice" name="advice" rows="4" class="w-full rounded-lg border border-slate-700 bg-slate-800 px-3 py-2 text-slate-200" required></textarea>
+                                            </div>
+                                            <div class="mb-3">
+                                                <label class="block text-sm text-slate-400 mb-1">Meals JSON (ví dụ array of objects)</label>
+                                                <textarea id="rec_meals" name="meals" rows="5" class="w-full rounded-lg border border-slate-700 bg-slate-800 px-3 py-2 text-slate-200" placeholder='[{"label":"Bữa sáng","name":"Yến mạch","kcal":400}]'></textarea>
+                                                <p class="text-[11px] text-slate-400 mt-1">Nhập JSON mảng meals hoặc để trống.</p>
+                                            </div>
+                                            <div class="flex justify-end gap-2 mt-4">
+                                                <button type="button" onclick="closeRecommendModal()" class="rounded-lg border px-4 py-2">Hủy</button>
+                                                <button type="button" onclick="submitRecommendation()" class="rounded-lg bg-emerald-500 px-4 py-2 text-black font-semibold">Gửi đề xuất</button>
+                                            </div>
+                                        </form>
+                                    </div>
+                                </div>
+
+                                <script>
+                                    function openRecommendModal(userId, userName) {
+                                        document.getElementById('rec_user_id').value = userId;
+                                        document.getElementById('rec_user_name').value = userName;
+                                        document.getElementById('rec_advice').value = '';
+                                        document.getElementById('rec_meals').value = '';
+                                        document.getElementById('recommendModal').style.display = 'flex';
+                                    }
+                                    function closeRecommendModal() {
+                                        document.getElementById('recommendModal').style.display = 'none';
+                                    }
+
+                                    async function submitRecommendation() {
+                                        const userId = document.getElementById('rec_user_id').value;
+                                        const advice = document.getElementById('rec_advice').value;
+                                        const meals = document.getElementById('rec_meals').value;
+
+                                        const token = document.querySelector('input[name="_token"]').value;
+
+                                        try {
+                                            const res = await fetch('{{ route('doctor.recommendations.save') }}', {
+                                                method: 'POST',
+                                                headers: {
+                                                    'Content-Type': 'application/json',
+                                                    'Accept': 'application/json',
+                                                    'X-CSRF-TOKEN': token,
+                                                    'X-Requested-With': 'XMLHttpRequest'
+                                                },
+                                                body: JSON.stringify({ user_id: userId, advice: advice, meals: meals })
+                                            });
+
+                                            if (!res.ok) {
+                                                let errText = '';
+                                                try {
+                                                    const errJson = await res.json();
+                                                    errText = errJson.message || JSON.stringify(errJson);
+                                                } catch (e) {
+                                                    errText = await res.text();
+                                                }
+                                                alert('Lỗi: ' + (errText || res.statusText));
+                                                return;
+                                            }
+
+                                            const data = await res.json();
+                                            if (data.success) {
+                                                alert('Lưu đề xuất thành công');
+                                                closeRecommendModal();
+                                            } else {
+                                                alert('Lỗi: ' + (data.message || 'Không lưu được'));
+                                            }
+                                        } catch (err) {
+                                            alert('Lỗi khi gửi yêu cầu: ' + (err.message || err));
+                                        }
+                                    }
+                                </script>
+
                 <!-- ================= TAB: PATIENTS ================= -->
                 <section id="tab-patients" class="tab-pane space-y-6 hidden">
                     <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
@@ -398,6 +484,7 @@
                                             <div class="inline-flex gap-2">
                                                 <button onclick="viewPatientMedicalRecord({{ $patient->id }})" class="h-8 px-3 rounded-lg border border-slate-700 hover:border-sky-500/50 bg-slate-900 text-sky-400 hover:text-white transition-all">Hồ sơ</button>
                                                 <button onclick="openChatWithPatient({{ $patient->id }}, '{{ $patient->name }}', '{{ $patient->avatar }}')" class="h-8 px-3 rounded-lg border border-slate-700 hover:border-indigo-500/50 bg-slate-900 text-indigo-400 hover:text-white transition-all">Tư vấn</button>
+                                                <button onclick="openRecommendModal({{ $patient->id }}, '{{ addslashes($patient->name) }}')" class="h-8 px-3 rounded-lg border border-slate-700 hover:border-emerald-500/50 bg-slate-900 text-emerald-400 hover:text-white transition-all">Gợi ý chế độ ăn</button>
                                             </div>
                                         </td>
                                     </tr>

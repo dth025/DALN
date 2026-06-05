@@ -11,25 +11,16 @@
         </div>
         <div>
             <h1 class="text-2xl font-bold tracking-tight md:text-3xl font-display">Thực đơn AI</h1>
-            <p class="mt-1 text-sm text-muted-foreground">Kế hoạch dinh dưỡng được cá nhân hóa cho hôm nay</p>
+            <p class="mt-1 text-sm text-muted-foreground">Kế hoạch dinh dưỡng được cá nhân hóa và có đề xuất từ bác sĩ</p>
         </div>
     </div>
-    <button class="flex items-center gap-2 rounded-xl gradient-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground shadow-glow hover:scale-[1.02] transition-transform">
+    <a href="{{ route('menu') }}" class="flex items-center gap-2 rounded-xl gradient-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground shadow-glow hover:scale-[1.02] transition-transform">
         <i data-lucide="refresh-cw" class="h-4 w-4"></i> Tạo thực đơn mới
-    </button>
+    </a>
 </div>
 
 <!-- Macros -->
 <div class="grid grid-cols-2 gap-4 lg:grid-cols-4 mb-6">
-    @php
-        $macros = [
-            ['label' => 'Calories', 'value' => '1,820', 'target' => '2,000', 'color' => 'from-orange-500 to-amber-400', 'width' => '91%'],
-            ['label' => 'Protein', 'value' => '120g', 'target' => '140g', 'color' => 'from-rose-500 to-pink-400', 'width' => '85%'],
-            ['label' => 'Carbs', 'value' => '210g', 'target' => '250g', 'color' => 'from-blue-500 to-cyan-400', 'width' => '84%'],
-            ['label' => 'Fat', 'value' => '55g', 'target' => '65g', 'color' => 'from-emerald-500 to-teal-400', 'width' => '84%'],
-        ];
-    @endphp
-
     @foreach($macros as $m)
     <div class="glass rounded-2xl p-4 shadow-soft">
         <p class="text-[11px] uppercase tracking-wider text-muted-foreground">{{ $m['label'] }}</p>
@@ -42,17 +33,73 @@
     @endforeach
 </div>
 
+<!-- AI & Doctor Diet Suggestions -->
+<div class="flex items-center justify-between mb-4 gap-3">
+    <div>
+        <h2 class="text-lg font-bold">Gợi ý chế độ ăn tự động</h2>
+        <p class="text-sm text-muted-foreground">Thực đơn sẽ cập nhật liên tục khi dữ liệu sức khỏe của bạn thay đổi.</p>
+    </div>
+    <div class="text-right text-[11px] text-muted-foreground">
+        Cập nhật lần cuối: <span id="menu-last-updated">{{ now()->format('H:i:s') }}</span>
+    </div>
+</div>
+
+<div id="diet-suggestion-blocks" class="grid gap-5 lg:grid-cols-2 mb-6">
+    <div id="ai-plan" class="glass rounded-3xl p-6 shadow-soft border border-white/10 bg-gradient-to-br from-slate-950/80 to-slate-900/70">
+        <div class="flex items-center gap-3 mb-4">
+            <div class="flex h-12 w-12 items-center justify-center rounded-2xl bg-primary/10 text-primary shadow-glow">
+                <i data-lucide="cpu" class="h-6 w-6"></i>
+            </div>
+            <div>
+                <h3 class="text-base font-semibold" id="ai-plan-title">{{ $aiSuggestedPlan['title'] }}</h3>
+                <p class="text-xs text-muted-foreground">Dựa trên chỉ số cơ thể và mục tiêu sức khỏe của bạn.</p>
+            </div>
+        </div>
+        <p id="ai-plan-description" class="text-sm leading-7 text-foreground/85">{{ $aiSuggestedPlan['description'] }}</p>
+        <div id="ai-plan-meals" class="mt-6 space-y-3">
+            @foreach($aiSuggestedPlan['meals'] as $meal)
+            <div class="rounded-3xl border border-white/10 bg-slate-950/70 p-4 shadow-soft-sm">
+                <div class="flex items-center justify-between gap-3">
+                    <div>
+                        <p class="text-[11px] uppercase tracking-widest text-muted-foreground">{{ $meal['label'] }}</p>
+                        <p class="mt-1 font-semibold text-foreground">{{ $meal['name'] }}</p>
+                    </div>
+                    <span class="rounded-full bg-primary/10 px-3 py-1 text-[10px] font-bold text-primary">{{ $meal['kcal'] }} kcal</span>
+                </div>
+            </div>
+            @endforeach
+        </div>
+    </div>
+
+    <div id="doctor-plan" class="glass rounded-3xl p-6 shadow-soft border border-white/10 bg-gradient-to-br from-slate-950/80 to-slate-900/70">
+        <div class="flex items-center gap-3 mb-4">
+            <div class="flex h-12 w-12 items-center justify-center rounded-2xl bg-emerald-500/10 text-emerald-400 shadow-glow">
+                <i data-lucide="stethoscope" class="h-6 w-6"></i>
+            </div>
+            <div>
+                <h3 class="text-base font-semibold">Chế độ ăn do bác sĩ đề xuất</h3>
+                <p class="text-xs text-muted-foreground">Lời khuyên dinh dưỡng từ chuyên gia sức khỏe.</p>
+            </div>
+        </div>
+        <p id="doctor-plan-description" class="text-sm leading-7 text-foreground/85">{{ $doctorRecommendedPlan['advice'] }}</p>
+        <div id="doctor-plan-meals" class="mt-6 space-y-3">
+            @foreach($doctorRecommendedPlan['meals'] as $meal)
+            <div class="rounded-3xl border border-white/10 bg-slate-950/70 p-4 shadow-soft-sm">
+                <div class="flex items-center justify-between gap-3">
+                    <div>
+                        <p class="text-[11px] uppercase tracking-widest text-muted-foreground">{{ $meal['label'] }}</p>
+                        <p class="mt-1 font-semibold text-foreground">{{ $meal['name'] }}</p>
+                    </div>
+                    <span class="rounded-full bg-emerald-500/10 px-3 py-1 text-[10px] font-bold text-emerald-400">{{ $meal['kcal'] }} kcal</span>
+                </div>
+            </div>
+            @endforeach
+        </div>
+    </div>
+</div>
+
 <!-- Meals -->
 <div class="grid gap-5 md:grid-cols-2 xl:grid-cols-4 mb-6">
-    @php
-        $meals = [
-            ['title' => 'Bữa sáng', 'time' => '07:00', 'kcal' => 420, 'name' => 'Yến mạch trái cây & hạt chia', 'img' => 'https://images.unsplash.com/photo-1517673400267-0251440c45dc?w=600&q=80', 'tags' => ['Giàu chất xơ', 'Vegan']],
-            ['title' => 'Bữa trưa', 'time' => '12:30', 'kcal' => 680, 'name' => 'Cơm gạo lứt ức gà nướng & rau củ', 'img' => 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=600&q=80', 'tags' => ['Cao đạm', 'Low-carb']],
-            ['title' => 'Bữa tối', 'time' => '18:30', 'kcal' => 520, 'name' => 'Salad cá hồi avocado', 'img' => 'https://images.unsplash.com/photo-1467003909585-2f8a72700288?w=600&q=80', 'tags' => ['Omega-3', 'Ít calo']],
-            ['title' => 'Bữa phụ', 'time' => '21:00', 'kcal' => 200, 'name' => 'Sữa chua Hy Lạp & việt quất', 'img' => 'https://images.unsplash.com/photo-1488477181946-6428a0291777?w=600&q=80', 'tags' => ['Probiotic']],
-        ];
-    @endphp
-
     @foreach($meals as $m)
     <div class="glass group overflow-hidden rounded-2xl shadow-soft transition-shadow hover:shadow-glow">
         <div class="relative h-40 overflow-hidden">
@@ -97,4 +144,45 @@
         </div>
     </div>
 </div>
+
+<script>
+    function renderMealItems(container, meals, badgeClass) {
+        container.innerHTML = meals.map(function(meal) {
+            return `
+                <div class="rounded-3xl border border-white/10 bg-slate-950/70 p-4 shadow-soft-sm">
+                    <div class="flex items-center justify-between gap-3">
+                        <div>
+                            <p class="text-[11px] uppercase tracking-widest text-muted-foreground">${meal.label}</p>
+                            <p class="mt-1 font-semibold text-foreground">${meal.name}</p>
+                        </div>
+                        <span class="rounded-full ${badgeClass} px-3 py-1 text-[10px] font-bold">${meal.kcal} kcal</span>
+                    </div>
+                </div>
+            `;
+        }).join('');
+    }
+
+    async function updateMenuPlans() {
+        try {
+            var response = await fetch('{{ route('menu.ai.data') }}');
+            if (!response.ok) return;
+            var data = await response.json();
+
+            document.getElementById('ai-plan-title').textContent = data.aiSuggestedPlan.title;
+            document.getElementById('ai-plan-description').textContent = data.aiSuggestedPlan.description;
+            document.getElementById('doctor-plan-description').textContent = data.doctorRecommendedPlan.advice;
+            document.getElementById('menu-last-updated').textContent = data.updated_at;
+
+            renderMealItems(document.getElementById('ai-plan-meals'), data.aiSuggestedPlan.meals, 'bg-primary/10 text-primary');
+            renderMealItems(document.getElementById('doctor-plan-meals'), data.doctorRecommendedPlan.meals, 'bg-emerald-500/10 text-emerald-400');
+        } catch (error) {
+            console.error('Không thể cập nhật thực đơn AI:', error);
+        }
+    }
+
+    document.addEventListener('DOMContentLoaded', function() {
+        updateMenuPlans();
+        setInterval(updateMenuPlans, 15000);
+    });
+</script>
 @endsection

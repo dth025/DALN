@@ -41,6 +41,7 @@ Route::post('/doctor/logout', [DoctorController::class, 'logout'])->name('doctor
 Route::get('/doctor/dashboard', [DoctorController::class, 'index'])->name('doctor.dashboard');
 Route::post('/doctor/profile', [DoctorController::class, 'updateProfile'])->name('doctor.profile.update');
 Route::post('/doctor/appointments/{id}/status', [DoctorController::class, 'toggleAppointmentStatus'])->name('doctor.appointments.status');
+Route::post('/doctor/recommendations/save', [DoctorController::class, 'saveRecommendation'])->name('doctor.recommendations.save');
 
 // Medical Records Routes
 Route::post('/doctor/medical-records/save', [MedicalRecordController::class, 'saveRecord'])->name('doctor.medicalRecords.save');
@@ -61,10 +62,15 @@ Route::middleware('auth')->group(function () {
     Route::get('/workout', [WorkoutController::class, 'index'])->name('workout');
     Route::post('/workout/log', [WorkoutController::class, 'logWorkout'])->name('workout.log');
     Route::get('/appointments', [AppointmentController::class, 'index'])->name('appointments');
+    Route::post('/appointments/book', [AppointmentController::class, 'store'])->name('appointments.book');
     Route::get('/pricing', [PricingController::class, 'index'])->name('pricing');
     Route::get('/chatbot', [ChatbotController::class, 'index'])->name('chatbot');
     Route::post('/chatbot/send', [ChatbotController::class, 'send'])->name('chatbot.send');
+    Route::get('/chatbot/doctors', [ConsultationController::class, 'getDoctorList'])->name('chatbot.doctors');
+    Route::get('/chatbot/messages/{doctorId}', [ConsultationController::class, 'getPatientMessages'])->name('chatbot.doctor.messages');
+    Route::post('/chatbot/send-doctor', [ConsultationController::class, 'sendPatientMessage'])->name('chatbot.doctor.send');
     Route::get('/menu', [MenuController::class, 'index'])->name('menu');
+    Route::get('/menu/ai-data', [MenuController::class, 'aiRecommendation'])->name('menu.ai.data');
 
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
