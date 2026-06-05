@@ -88,6 +88,12 @@ Route::middleware('auth')->group(function () {
     Route::get('/notifications', [NotificationController::class, 'index'])->name('notifications.index');
     Route::post('/notifications/{notification}/read', [NotificationController::class, 'markAsRead'])->name('notifications.read');
     Route::post('/notifications/read-all', [NotificationController::class, 'markAllAsRead'])->name('notifications.readAll');
+
+    // MealPlan Routes
+    Route::get('/meal-plans', [\App\Http\Controllers\MealPlanController::class, 'index'])->name('mealplans.index');
+    Route::get('/meal-plans/{id}', [\App\Http\Controllers\MealPlanController::class, 'show'])->name('mealplans.show');
+    Route::post('/meal-plans', [\App\Http\Controllers\MealPlanController::class, 'store'])->name('mealplans.store');
+    Route::post('/meal-plans/{id}/assign', [\App\Http\Controllers\MealPlanController::class, 'assignToPatient'])->name('mealplans.assign');
 });
 
 // Mobile QR pairing - public, token-based security

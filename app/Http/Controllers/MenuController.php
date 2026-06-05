@@ -146,11 +146,36 @@ class MenuController extends Controller
                 ->first();
 
             if ($recModel) {
-                $doctorPlan = [
-                    'doctor' => $recModel->doctor?->name ?? 'Bác sĩ',
-                    'advice' => $recModel->advice ?? '',
-                    'meals' => $recModel->meals ?? [],
-                ];
+                // If a MealPlan exists for this user, prefer it (it has structured 'days')
+                $latestMealPlan = \App\Models\MealPlan::where('patient_id', $user->id)->latest()->first();
+                if ($latestMealPlan) {
+                    // Flatten days -> meals for display (take first day or merge)
+                    $flatMeals = [];
+                    $days = $latestMealPlan->days ?? [];
+                    if (is_array($days)) {
+                        foreach ($days as $d) {
+                            if (isset($d['meals']) && is_array($d['meals'])) {
+                                $flatMeals = array_merge($flatMeals, $d['meals']);
+                            }
+                        }
+                    }
+
+                    if (empty($flatMeals) && is_array($recModel->meals)) {
+                        $flatMeals = $recModel->meals;
+                    }
+
+                    $doctorPlan = [
+                        'doctor' => $recModel->doctor?->name ?? 'Bác sĩ',
+                        'advice' => $recModel->advice ?? '',
+                        'meals' => $flatMeals,
+                    ];
+                } else {
+                    $doctorPlan = [
+                        'doctor' => $recModel->doctor?->name ?? 'Bác sĩ',
+                        'advice' => $recModel->advice ?? '',
+                        'meals' => $recModel->meals ?? [],
+                    ];
+                }
             }
         } catch (\Exception $e) {
             // fallback to default static plan if any error

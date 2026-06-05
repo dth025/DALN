@@ -320,12 +320,14 @@
                                                 <textarea id="rec_advice" name="advice" rows="4" class="w-full rounded-lg border border-slate-700 bg-slate-800 px-3 py-2 text-slate-200" required></textarea>
                                             </div>
                                             <div class="mb-3">
-                                                <label class="block text-sm text-slate-400 mb-1">Meals JSON (ví dụ array of objects)</label>
-                                                <textarea id="rec_meals" name="meals" rows="5" class="w-full rounded-lg border border-slate-700 bg-slate-800 px-3 py-2 text-slate-200" placeholder='[{"label":"Bữa sáng","name":"Yến mạch","kcal":400}]'></textarea>
-                                                <p class="text-[11px] text-slate-400 mt-1">Nhập JSON mảng meals hoặc để trống.</p>
+                                                <label class="block text-sm text-slate-400 mb-1">Danh sách bữa ăn</label>
+                                                <div id="rec_meal_items" class="space-y-3"></div>
+                                                <button type="button" onclick="addMealRow()" class="rounded-lg border px-4 py-2 text-sm">Thêm bữa mới</button>
+                                                <p class="text-[11px] text-slate-400 mt-1">Nhập mô tả cho mỗi bữa ăn. Chỉ cần tối thiểu một bữa nếu muốn gửi chế độ ăn.</p>
                                             </div>
                                             <div class="flex justify-end gap-2 mt-4">
                                                 <button type="button" onclick="closeRecommendModal()" class="rounded-lg border px-4 py-2">Hủy</button>
+                                                <button type="button" onclick="loadSampleMeals()" class="rounded-lg border px-4 py-2">Load mẫu</button>
                                                 <button type="button" onclick="submitRecommendation()" class="rounded-lg bg-emerald-500 px-4 py-2 text-black font-semibold">Gửi đề xuất</button>
                                             </div>
                                         </form>
@@ -337,19 +339,93 @@
                                         document.getElementById('rec_user_id').value = userId;
                                         document.getElementById('rec_user_name').value = userName;
                                         document.getElementById('rec_advice').value = '';
-                                        document.getElementById('rec_meals').value = '';
+                                        renderMealRows([]);
                                         document.getElementById('recommendModal').style.display = 'flex';
                                     }
                                     function closeRecommendModal() {
                                         document.getElementById('recommendModal').style.display = 'none';
                                     }
 
+                                    function createMealRow(meal = {}) {
+                                        const container = document.getElementById('rec_meal_items');
+                                        const row = document.createElement('div');
+                                        row.className = 'meal-item-row grid gap-3 md:grid-cols-3 items-end';
+                                        row.innerHTML = `
+                                            <div>
+                                                <label class="block text-sm text-slate-400 mb-1">Bữa</label>
+                                                <input type="text" class="meal-label w-full rounded-lg border border-slate-700 bg-slate-800 px-3 py-2 text-slate-200" value="${meal.label ?? ''}" placeholder="Bữa sáng / Bữa trưa" />
+                                            </div>
+                                            <div>
+                                                <label class="block text-sm text-slate-400 mb-1">Món ăn</label>
+                                                <input type="text" class="meal-name w-full rounded-lg border border-slate-700 bg-slate-800 px-3 py-2 text-slate-200" value="${meal.name ?? ''}" placeholder="Yến mạch, ức gà..." />
+                                            </div>
+                                            <div class="flex flex-col gap-2">
+                                                <div>
+                                                    <label class="block text-sm text-slate-400 mb-1">Calories</label>
+                                                    <input type="number" min="0" class="meal-kcal w-full rounded-lg border border-slate-700 bg-slate-800 px-3 py-2 text-slate-200" value="${meal.kcal ?? ''}" placeholder="400" />
+                                                </div>
+                                                <button type="button" onclick="removeMealRow(this)" class="rounded-lg border px-3 py-2 text-sm text-red-400">Xoá</button>
+                                            </div>
+                                        `;
+                                        container.appendChild(row);
+                                    }
+
+                                    function addMealRow(meal = {}) {
+                                        createMealRow(meal);
+                                    }
+
+                                    function removeMealRow(button) {
+                                        const row = button.closest('.meal-item-row');
+                                        if (row) {
+                                            row.remove();
+                                        }
+                                    }
+
+                                    function renderMealRows(meals = []) {
+                                        const container = document.getElementById('rec_meal_items');
+                                        container.innerHTML = '';
+                                        if (meals.length === 0) {
+                                            addMealRow();
+                                            addMealRow();
+                                            addMealRow();
+                                            return;
+                                        }
+                                        meals.forEach(meal => createMealRow(meal));
+                                    }
+
                                     async function submitRecommendation() {
                                         const userId = document.getElementById('rec_user_id').value;
                                         const advice = document.getElementById('rec_advice').value;
-                                        const meals = document.getElementById('rec_meals').value;
-
                                         const token = document.querySelector('input[name="_token"]').value;
+
+                                        const rows = document.querySelectorAll('.meal-item-row');
+                                        const meals = [];
+                                        let hasError = false;
+
+                                        rows.forEach(row => {
+                                            const label = row.querySelector('.meal-label')?.value.trim();
+                                            const name = row.querySelector('.meal-name')?.value.trim();
+                                            const kcalValue = row.querySelector('.meal-kcal')?.value;
+                                            const kcal = kcalValue !== undefined && kcalValue !== null && kcalValue !== '' ? parseInt(kcalValue, 10) : null;
+
+                                            if (label || name || kcal) {
+                                                if (!label || !name) {
+                                                    hasError = true;
+                                                    return;
+                                                }
+                                                meals.push({ label, name, kcal });
+                                            }
+                                        });
+
+                                        if (hasError) {
+                                            alert('Vui lòng điền đầy đủ cả Bữa và Món ăn cho mỗi dòng đã nhập.');
+                                            return;
+                                        }
+
+                                        let payload = { user_id: userId, advice: advice };
+                                        if (meals.length > 0) {
+                                            payload.meals = meals;
+                                        }
 
                                         try {
                                             const res = await fetch('{{ route('doctor.recommendations.save') }}', {
@@ -360,7 +436,7 @@
                                                     'X-CSRF-TOKEN': token,
                                                     'X-Requested-With': 'XMLHttpRequest'
                                                 },
-                                                body: JSON.stringify({ user_id: userId, advice: advice, meals: meals })
+                                                body: JSON.stringify(payload)
                                             });
 
                                             if (!res.ok) {
@@ -385,6 +461,14 @@
                                         } catch (err) {
                                             alert('Lỗi khi gửi yêu cầu: ' + (err.message || err));
                                         }
+                                    }
+
+                                    function loadSampleMeals() {
+                                        renderMealRows([
+                                            { label: 'Bữa sáng', name: 'Yến mạch', kcal: 400 },
+                                            { label: 'Bữa trưa', name: 'Ức gà nướng + rau', kcal: 650 },
+                                            { label: 'Bữa tối', name: 'Salad cá hồi', kcal: 520 },
+                                        ]);
                                     }
                                 </script>
 

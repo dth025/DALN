@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use App\Models\Doctor;
+use App\Models\MealPlan;
 use App\Models\User;
 use App\Models\Appointment;
 use App\Models\MedicalRecord;
@@ -242,18 +243,23 @@ class DoctorController extends Controller
         $data = $request->validate([
             'user_id' => 'required|exists:users,id',
             'advice' => 'required|string|max:2000',
-            'meals' => 'nullable|string', // JSON string
+            'meals' => 'nullable', // can be string (JSON) or array
         ]);
 
         $meals = null;
-        if (!empty($data['meals'])) {
-            try {
-                $decoded = json_decode($data['meals'], true);
-                if (json_last_error() === JSON_ERROR_NONE) {
-                    $meals = $decoded;
+        if (isset($data['meals']) && $data['meals'] !== null && $data['meals'] !== '') {
+            // Accept array directly (from client) or JSON string
+            if (is_array($data['meals'])) {
+                $meals = $data['meals'];
+            } else {
+                try {
+                    $decoded = json_decode($data['meals'], true);
+                    if (json_last_error() === JSON_ERROR_NONE) {
+                        $meals = $decoded;
+                    }
+                } catch (\Exception $e) {
+                    $meals = null;
                 }
-            } catch (\Exception $e) {
-                $meals = null;
             }
         }
 
@@ -264,7 +270,52 @@ class DoctorController extends Controller
             'meals' => $meals,
         ]);
 
-        return response()->json(['success' => true, 'message' => 'Lưu đề xuất thành công', 'recommendation' => $rec]);
+        // If meals were provided, convert into a MealPlan and save
+        $createdMealPlan = null;
+        if (!empty($meals) && is_array($meals)) {
+            // Determine if meals is already structured as days (each item has 'meals')
+            $isDays = false;
+            if (count($meals) > 0 && isset($meals[0]) && is_array($meals[0]) && array_key_exists('meals', $meals[0])) {
+                $days = $meals;
+                $isDays = true;
+            } else {
+                // Treat as single-day meals array
+                $days = [ ['meals' => $meals] ];
+            }
+
+            // Calculate total calories if provided
+            $totalCalories = 0;
+            foreach ($days as $day) {
+                if (!empty($day['meals']) && is_array($day['meals'])) {
+                    foreach ($day['meals'] as $m) {
+                        if (is_array($m)) {
+                            if (isset($m['kcal'])) $totalCalories += (int) $m['kcal'];
+                            elseif (isset($m['calories'])) $totalCalories += (int) $m['calories'];
+                        }
+                    }
+                }
+            }
+
+            $planTitle = 'Chế độ ăn bác sĩ đề xuất - ' . now()->format('Y-m-d');
+
+            $createdMealPlan = MealPlan::create([
+                'title' => $planTitle,
+                'description' => substr($data['advice'], 0, 1000),
+                'calories' => $totalCalories > 0 ? $totalCalories : null,
+                'tags' => ['from-doctor'],
+                'doctor_id' => $doctorId,
+                'patient_id' => $data['user_id'],
+                'is_template' => false,
+                'days' => $days,
+            ]);
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Lưu đề xuất thành công',
+            'recommendation' => $rec,
+            'meal_plan' => $createdMealPlan,
+        ]);
     }
 
     public function toggleAppointmentStatus(Request $request, $id)
