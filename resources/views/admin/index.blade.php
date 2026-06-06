@@ -1011,6 +1011,15 @@
 
             <h3 id="doctor-modal-title" class="text-lg font-bold text-foreground mb-6">Thêm bác sĩ mới</h3>
             
+            <div class="flex justify-center mb-6">
+                <div class="relative group/avatar">
+                    <img id="doc-preview-avatar" src="https://ui-avatars.com/api/?name=Doctor&background=10b981&color=fff" class="h-24 w-24 rounded-full object-cover border-2 border-primary/20 shadow-glow transition-transform duration-500 group-hover/avatar:scale-105">
+                    <button type="button" onclick="document.getElementById('doc-input-avatar').click()" class="absolute -bottom-1 -right-1 flex h-8 w-8 items-center justify-center rounded-xl gradient-primary text-white shadow-lg transition-transform hover:scale-110 active:scale-95 z-20">
+                        <i data-lucide="camera" class="h-4 w-4"></i>
+                    </button>
+                </div>
+            </div>
+
             <div class="space-y-4">
                 <div class="space-y-1.5">
                     <label class="text-xs font-bold uppercase tracking-wider text-muted-foreground">Họ tên bác sĩ</label>
@@ -1036,9 +1045,9 @@
                         <input id="doc-input-phone" class="h-10 text-xs w-full rounded-xl border border-border/50 bg-background px-3 font-semibold outline-none focus:border-primary">
                     </div>
                 </div>
-                <div class="space-y-1.5">
-                    <label class="text-xs font-bold uppercase tracking-wider text-muted-foreground">Ảnh đại diện (Link ảnh)</label>
-                    <input id="doc-input-avatar" placeholder="https://..." class="h-10 text-xs w-full rounded-xl border border-border/50 bg-background px-3 font-semibold outline-none focus:border-primary">
+                <div class="space-y-1.5 hidden">
+                    <label class="text-xs font-bold uppercase tracking-wider text-muted-foreground">Ảnh đại diện (Upload)</label>
+                    <input type="file" id="doc-input-avatar" accept="image/*" onchange="previewAdminDoctorAvatar(this)">
                 </div>
             </div>
 
@@ -1391,6 +1400,7 @@
             document.getElementById('doc-input-email').value = '';
             document.getElementById('doc-input-phone').value = '';
             document.getElementById('doc-input-avatar').value = '';
+            document.getElementById('doc-preview-avatar').src = 'https://ui-avatars.com/api/?name=Doctor&background=10b981&color=fff';
 
             triggerDoctorModal(true);
         }
@@ -1406,7 +1416,8 @@
             document.getElementById('doc-input-place').value = doctor.place;
             document.getElementById('doc-input-email').value = doctor.email || '';
             document.getElementById('doc-input-phone').value = doctor.phone || '';
-            document.getElementById('doc-input-avatar').value = doctor.avatar || '';
+            document.getElementById('doc-input-avatar').value = ''; // Reset file input
+            document.getElementById('doc-preview-avatar').src = doctor.avatar || 'https://ui-avatars.com/api/?name='+encodeURIComponent(doctor.name)+'&background=10b981&color=fff';
 
             triggerDoctorModal(true);
         }
@@ -1432,39 +1443,49 @@
             triggerDoctorModal(false);
         }
 
+        function previewAdminDoctorAvatar(input) {
+            if (input.files && input.files[0]) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    document.getElementById('doc-preview-avatar').src = e.target.result;
+                }
+                reader.readAsDataURL(input.files[0]);
+            }
+        }
+
         function saveDoctor() {
             const name = document.getElementById('doc-input-name').value;
             const specialty = document.getElementById('doc-input-specialty').value;
             const place = document.getElementById('doc-input-place').value;
             const email = document.getElementById('doc-input-email').value;
             const phone = document.getElementById('doc-input-phone').value;
-            const avatar = document.getElementById('doc-input-avatar').value;
+            const avatarFile = document.getElementById('doc-input-avatar').files[0];
 
             if (!name || !specialty || !place) {
                 alert('Vui lòng nhập đầy đủ họ tên, chuyên khoa và địa điểm!');
                 return;
             }
 
-            const payload = {
-                name: name,
-                specialty: specialty,
-                place: place,
-                email: email,
-                phone: phone,
-                avatar: avatar
-            };
+            let formData = new FormData();
+            formData.append('name', name);
+            formData.append('specialty', specialty);
+            formData.append('place', place);
+            formData.append('email', email);
+            formData.append('phone', phone);
+            if (avatarFile) {
+                formData.append('avatar', avatarFile);
+            }
 
             if (selectedDoctorId !== null) {
-                payload.id = selectedDoctorId;
+                formData.append('id', selectedDoctorId);
             }
 
             fetch('/admin/doctors/save', {
                 method: 'POST',
                 headers: {
-                    'Content-Type': 'application/json',
                     'X-CSRF-TOKEN': '{{ csrf_token() }}'
                 },
-                body: JSON.stringify(payload)
+                body: formData
             })
             .then(response => response.json())
             .then(data => {

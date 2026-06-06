@@ -382,6 +382,164 @@
             </div>
         </div>
     </div>
+
+    <!-- Doctor and Health Sync Section -->
+    <div class="grid gap-6 md:grid-cols-2 lg:grid-cols-3 mt-6">
+        <!-- Upcoming Appointments Card -->
+        <div class="glass relative overflow-hidden rounded-[2.5rem] p-6 shadow-soft flex flex-col h-[400px]">
+            <div class="flex items-center justify-between mb-4">
+                <div class="flex items-center gap-2.5">
+                    <div class="h-9 w-9 rounded-xl bg-sky-500/10 flex items-center justify-center text-sky-500 dark:text-sky-400">
+                        <i data-lucide="calendar-days" class="h-5 w-5"></i>
+                    </div>
+                    <div>
+                        <h3 class="text-xs font-black uppercase tracking-wider text-slate-400">Lịch khám sắp tới</h3>
+                        <p class="text-[10px] text-muted-foreground">Theo dõi và quản lý lịch hẹn</p>
+                    </div>
+                </div>
+                <a href="{{ route('appointments') }}" class="text-[10px] font-bold text-sky-500 hover:underline flex items-center gap-1">
+                    Đặt lịch <i data-lucide="arrow-right" class="h-3 w-3"></i>
+                </a>
+            </div>
+            
+            <div class="flex-1 overflow-y-auto space-y-3 pr-1 scrollbar-hide">
+                @forelse($upcomingAppointments as $appt)
+                    <div class="bg-white/5 border border-white/5 dark:bg-slate-900/40 p-4 rounded-2xl flex flex-col gap-2 hover:border-sky-500/20 transition-all">
+                        <div class="flex justify-between items-start">
+                            <div>
+                                <h4 class="text-xs font-black text-foreground">{{ $appt['doctor_name'] }}</h4>
+                                <p class="text-[10px] text-muted-foreground">{{ $appt['specialty'] }}</p>
+                            </div>
+                            <span class="px-2 py-0.5 rounded-full text-[9px] font-bold bg-sky-500/10 text-sky-500 border border-sky-500/20">
+                                Chờ khám
+                            </span>
+                        </div>
+                        <div class="flex items-center gap-4 text-[10px] text-muted-foreground mt-1">
+                            <span class="flex items-center gap-1"><i data-lucide="calendar" class="h-3.5 w-3.5 text-sky-400"></i> {{ $appt['date'] }}</span>
+                            <span class="flex items-center gap-1"><i data-lucide="clock" class="h-3.5 w-3.5 text-sky-400"></i> {{ $appt['time'] }}</span>
+                        </div>
+                        @if($appt['notes'])
+                            <p class="text-[10px] text-slate-400 font-normal italic mt-1 bg-black/10 dark:bg-black/30 p-2 rounded-lg">Ghi chú: {{ $appt['notes'] }}</p>
+                        @endif
+                    </div>
+                @empty
+                    <div class="flex flex-col items-center justify-center h-full text-center py-10">
+                        <div class="h-12 w-12 rounded-full bg-slate-800/50 flex items-center justify-center mb-3 border border-white/5">
+                            <i data-lucide="calendar" class="h-5 w-5 text-slate-500"></i>
+                        </div>
+                        <p class="text-xs font-semibold text-slate-400">Chưa có lịch hẹn khám nào</p>
+                        <p class="text-[10px] text-muted-foreground mt-1">Hãy đặt lịch với bác sĩ chuyên khoa của bạn</p>
+                    </div>
+                @endforelse
+            </div>
+        </div>
+
+        <!-- Doctor Messages / Chat Card -->
+        <div class="glass relative overflow-hidden rounded-[2.5rem] p-6 shadow-soft flex flex-col h-[400px]">
+            <div class="flex items-center justify-between mb-4">
+                <div class="flex items-center gap-2.5">
+                    <div class="h-9 w-9 rounded-xl bg-violet-500/10 flex items-center justify-center text-violet-500 dark:text-violet-400">
+                        <i data-lucide="message-square" class="h-5 w-5"></i>
+                    </div>
+                    <div>
+                        <h3 class="text-xs font-black uppercase tracking-wider text-slate-400">Bác sĩ tư vấn</h3>
+                        <p class="text-[10px] text-muted-foreground">Tin nhắn và tư vấn y tế</p>
+                    </div>
+                </div>
+                <a href="{{ route('chatbot') }}" class="text-[10px] font-bold text-violet-500 hover:underline flex items-center gap-1">
+                    Phòng chat @if($unreadDoctorMessages > 0) <span class="bg-rose-500 text-white rounded-full px-1.5 py-0.5 text-[8px] animate-pulse">{{ $unreadDoctorMessages }}</span> @endif
+                </a>
+            </div>
+            
+            <div class="flex-1 overflow-y-auto space-y-3 pr-1 scrollbar-hide">
+                @forelse($doctorMessages as $msg)
+                    <a href="{{ route('chatbot') }}?doctor_id={{ $msg['doctor_id'] }}" class="block bg-white/5 border border-white/5 dark:bg-slate-900/40 p-3.5 rounded-2xl hover:border-violet-500/20 hover:bg-white/10 dark:hover:bg-slate-900/60 transition-all relative">
+                        <div class="flex gap-3">
+                            <img src="{{ $msg['doctor_avatar'] }}" class="h-9 w-9 rounded-full border border-slate-700 object-cover">
+                            <div class="flex-1 min-w-0">
+                                <div class="flex justify-between items-start">
+                                    <div>
+                                        <h4 class="text-xs font-black text-foreground">{{ $msg['doctor_name'] }}</h4>
+                                        <p class="text-[9px] text-muted-foreground">{{ $msg['doctor_specialty'] }}</p>
+                                    </div>
+                                    <span class="text-[8px] text-muted-foreground">{{ $msg['time'] }}</span>
+                                </div>
+                                <p class="text-[10px] text-slate-300 truncate mt-1.5 font-normal">
+                                    @if(!$msg['is_read'])
+                                        <span class="inline-block h-2 w-2 rounded-full bg-emerald-500 mr-1 animate-pulse"></span>
+                                        <strong>{{ $msg['message'] }}</strong>
+                                    @else
+                                        {{ $msg['message'] }}
+                                    @endif
+                                </p>
+                                @if($msg['file_path'])
+                                    <span class="inline-flex items-center gap-1 text-[8px] text-violet-400 mt-1"><i data-lucide="paperclip" class="h-2.5 w-2.5"></i> Đính kèm tệp</span>
+                                @endif
+                            </div>
+                        </div>
+                    </a>
+                @empty
+                    <div class="flex flex-col items-center justify-center h-full text-center py-10">
+                        <div class="h-12 w-12 rounded-full bg-slate-800/50 flex items-center justify-center mb-3 border border-white/5">
+                            <i data-lucide="message-square" class="h-5 w-5 text-slate-500"></i>
+                        </div>
+                        <p class="text-xs font-semibold text-slate-400">Không có tin nhắn nào</p>
+                        <p class="text-[10px] text-muted-foreground mt-1">Lịch sử tư vấn của bác sĩ sẽ xuất hiện ở đây</p>
+                    </div>
+                @endforelse
+            </div>
+        </div>
+
+        <!-- Medical Records / Diagnosis Card -->
+        <div class="glass relative overflow-hidden rounded-[2.5rem] p-6 shadow-soft flex flex-col h-[400px]">
+            <div class="flex items-center justify-between mb-4">
+                <div class="flex items-center gap-2.5">
+                    <div class="h-9 w-9 rounded-xl bg-emerald-500/10 flex items-center justify-center text-emerald-500 dark:text-emerald-400">
+                        <i data-lucide="clipboard-list" class="h-5 w-5"></i>
+                    </div>
+                    <div>
+                        <h3 class="text-xs font-black uppercase tracking-wider text-slate-400">Bệnh án gần đây</h3>
+                        <p class="text-[10px] text-muted-foreground">Chẩn đoán và chỉ định điều trị</p>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="flex-1 overflow-y-auto space-y-3 pr-1 scrollbar-hide">
+                @forelse($medicalRecords as $rec)
+                    <div x-data="{ open: false }" class="bg-white/5 border border-white/5 dark:bg-slate-900/40 p-4 rounded-2xl hover:border-emerald-500/20 transition-all flex flex-col">
+                        <div class="flex justify-between items-start cursor-pointer" @click="open = !open">
+                            <div>
+                                <h4 class="text-xs font-black text-foreground">{{ $rec['diagnosis'] }}</h4>
+                                <p class="text-[9px] text-slate-400">BS. {{ $rec['doctor_name'] }} · {{ $rec['doctor_specialty'] }}</p>
+                            </div>
+                            <div class="flex flex-col items-end gap-1">
+                                <span class="text-[8px] text-muted-foreground">{{ $rec['recorded_at'] }}</span>
+                                <i data-lucide="chevron-down" class="h-3.5 w-3.5 text-slate-500 transition-transform duration-300" :class="open ? 'rotate-180' : ''"></i>
+                            </div>
+                        </div>
+                        
+                        <div x-show="open" x-transition class="mt-3 pt-3 border-t border-white/5 space-y-2 text-[10px] font-normal text-slate-300">
+                            <p><span class="font-bold text-slate-400">Triệu chứng:</span> {{ $rec['symptoms'] }}</p>
+                            @if($rec['prescribed_medicine'])
+                                <p><span class="font-bold text-sky-400">Thuốc kê đơn:</span> {{ $rec['prescribed_medicine'] }}</p>
+                            @endif
+                            @if($rec['treatment_instructions'])
+                                <p><span class="font-bold text-emerald-400">Hướng dẫn điều trị:</span> {{ $rec['treatment_instructions'] }}</p>
+                            @endif
+                        </div>
+                    </div>
+                @empty
+                    <div class="flex flex-col items-center justify-center h-full text-center py-10">
+                        <div class="h-12 w-12 rounded-full bg-slate-800/50 flex items-center justify-center mb-3 border border-white/5">
+                            <i data-lucide="clipboard-list" class="h-5 w-5 text-slate-500"></i>
+                        </div>
+                        <p class="text-xs font-semibold text-slate-400">Chưa có bệnh án lâm sàng</p>
+                        <p class="text-[10px] text-muted-foreground mt-1">Hồ sơ khám bệnh từ bác sĩ sẽ được lưu tại đây</p>
+                    </div>
+                @endforelse
+            </div>
+        </div>
+    </div>
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>

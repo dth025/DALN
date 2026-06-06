@@ -1,4 +1,4 @@
-﻿@extends('layouts.dashboard')
+@extends('layouts.dashboard')
 
 @section('title', 'Tư vấn sức khỏe — HealthAI')
 
@@ -210,13 +210,24 @@ function medConsultationSystem() {
         unreadDoctors: {},
         pollIntervalId: null,
 
-        init() {
+        async init() {
             this.aiHistory = @json($history->map(function($h) {
                 return ['message' => $h->message, 'time' => $h->created_at->diffForHumans()];
             })->values());
             this.aiMessages = [{ sender: 'assistant', content: 'Xin chào! Tôi là HealthAI Assistant. Hôm nay tôi có thể giúp gì cho sức khỏe của bạn?', time: '' }];
-            this.loadDoctors();
+            await this.loadDoctors();
             this.startPolling();
+
+            // Auto select doctor from URL query parameter
+            const urlParams = new URLSearchParams(window.location.search);
+            const docId = urlParams.get('doctor_id');
+            if (docId) {
+                this.activeTab = 'doctor';
+                const doc = this.doctors.find(d => d.id == docId);
+                if (doc) {
+                    this.selectDoctor(doc);
+                }
+            }
         },
 
         startPolling() {
@@ -228,7 +239,7 @@ function medConsultationSystem() {
                 if (this.selectedDoctor) {
                     await this.pollDoctorMessages();
                 }
-            }, 8000);
+            }, 5000);
         },
 
         switchTab(tab) {

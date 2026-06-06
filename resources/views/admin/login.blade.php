@@ -100,27 +100,6 @@
                 <i data-lucide="arrow-right" class="h-4 w-4"></i>
             </button>
         </form>
-
-        <!-- Static Credentials Display Badge -->
-        <div class="mt-8 border-t border-border/20 pt-6">
-            <div class="rounded-2xl bg-primary/10 border border-primary/20 p-4">
-                <p class="text-[10px] font-black text-primary uppercase tracking-widest flex items-center gap-1.5 mb-2.5">
-                    <i data-lucide="shield-check" class="h-4 w-4"></i>
-                    Tài khoản Admin Demo Cố Định
-                </p>
-                <div class="space-y-1.5 text-xs font-semibold text-muted-foreground">
-                    <div class="flex justify-between">
-                        <span>Email:</span>
-                        <span class="text-white select-all">admin@healthai.vn</span>
-                    </div>
-                    <div class="flex justify-between">
-                        <span>Mật khẩu:</span>
-                        <span class="text-white select-all">admin123</span>
-                    </div>
-                </div>
-            </div>
-        </div>
-
     </div>
 
     <script>
