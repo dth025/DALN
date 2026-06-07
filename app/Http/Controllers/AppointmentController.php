@@ -87,4 +87,52 @@ class AppointmentController extends Controller
 
         return redirect()->route('appointments')->with('success', 'Đặt lịch khám thành công!');
     }
+
+    public function reschedule(Request $request, $id)
+    {
+        $appointment = Appointment::where('id', $id)
+            ->where('user_id', Auth::id())
+            ->where('status', 'scheduled')
+            ->firstOrFail();
+
+        $request->validate([
+            'appointment_date' => 'required|date',
+        ]);
+
+        $newDate = Carbon::parse($request->appointment_date);
+
+        $conflict = Appointment::where('doctor_id', $appointment->doctor_id)
+            ->where('appointment_date', $newDate)
+            ->where('id', '!=', $appointment->id)
+            ->exists();
+
+        if ($conflict) {
+            if ($request->wantsJson() || $request->ajax()) {
+                return response()->json(['success' => false, 'message' => 'Bác sĩ đã có lịch tại thời gian này. Vui lòng chọn khung giờ khác.'], 409);
+            }
+
+            return back()->withErrors(['appointment_date' => 'Bác sĩ đã có lịch tại thời gian này. Vui lòng chọn khung giờ khác.'])->withInput();
+        }
+
+        $appointment->appointment_date = $newDate;
+        $appointment->save();
+
+        try {
+            AppNotification::create([
+                'user_id' => Auth::id(),
+                'type' => 'appointment',
+                'title' => 'Cập nhật lịch khám',
+                'message' => "Lịch khám với {$appointment->doctor_name} đã được đổi sang " . $newDate->format('d/m/Y H:i'),
+                'link' => route('appointments'),
+            ]);
+        } catch (\Exception $e) {
+            // ignore notification errors
+        }
+
+        if ($request->wantsJson() || $request->ajax()) {
+            return response()->json(['success' => true, 'message' => 'Đổi lịch thành công', 'appointment' => $appointment]);
+        }
+
+        return redirect()->route('appointments')->with('success', 'Đổi lịch khám thành công!');
+    }
 }

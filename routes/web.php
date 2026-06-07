@@ -68,6 +68,7 @@ Route::middleware('auth')->group(function () {
     Route::post('/workout/log', [WorkoutController::class, 'logWorkout'])->name('workout.log');
     Route::get('/appointments', [AppointmentController::class, 'index'])->name('appointments');
     Route::post('/appointments/book', [AppointmentController::class, 'store'])->name('appointments.book');
+    Route::post('/appointments/{id}/reschedule', [AppointmentController::class, 'reschedule'])->name('appointments.reschedule');
     Route::get('/pricing', [PricingController::class, 'index'])->name('pricing');
     Route::get('/chatbot', [ChatbotController::class, 'index'])->name('chatbot');
     Route::post('/chatbot/send', [ChatbotController::class, 'send'])->name('chatbot.send');
