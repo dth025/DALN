@@ -385,6 +385,7 @@ class AdminController extends Controller
             'name' => 'required',
             'specialty' => 'required',
             'place' => 'required',
+            'avatar' => 'nullable|image|max:2048',
         ]);
 
         if ($request->has('id') && $request->id) {
@@ -395,12 +396,17 @@ class AdminController extends Controller
             $message = 'Thêm bác sĩ mới thành công!';
         }
 
+        $avatarPath = $doctor->avatar ?? null;
+        if ($request->hasFile('avatar')) {
+            $avatarPath = $request->file('avatar')->store('avatars', 'public');
+        }
+
         $doctor->name = $request->name;
         $doctor->specialty = $request->specialty;
         $doctor->email = $request->email;
         $doctor->phone = $request->phone;
         $doctor->place = $request->place;
-        $doctor->avatar = $request->avatar ?: 'https://ui-avatars.com/api/?name=' . urlencode($request->name) . '&background=10b981&color=fff';
+        $doctor->avatar = $avatarPath ?: 'https://ui-avatars.com/api/?name=' . urlencode($request->name) . '&background=10b981&color=fff';
         $doctor->status = $request->status ?: 'active';
         $doctor->save();
 

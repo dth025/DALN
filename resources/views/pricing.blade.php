@@ -124,7 +124,7 @@
                     <div class="flex justify-between items-start gap-4">
                         <div class="flex items-center gap-3.5">
                             @if($r->user && $r->user->avatar)
-                                <img src="{{ asset('storage/' . $r->user->avatar) }}" class="h-10 w-10 rounded-full object-cover ring-2 ring-border">
+                                <img src="{{ $r->user->avatar_url }}" class="h-10 w-10 rounded-full object-cover ring-2 ring-border">
                             @elseif($r->user)
                                 <img src="https://ui-avatars.com/api/?name={{ urlencode($r->user->name) }}&background=6366f1&color=fff" class="h-10 w-10 rounded-full object-cover ring-2 ring-border">
                             @else
@@ -174,7 +174,7 @@
                             <div class="flex justify-between items-start gap-4">
                                 <div class="flex items-center gap-3">
                                     @if($reply->user && $reply->user->avatar)
-                                        <img src="{{ asset('storage/' . $reply->user->avatar) }}" class="h-8 w-8 rounded-full object-cover ring-1 ring-border">
+                                        <img src="{{ $reply->user->avatar_url }}" class="h-8 w-8 rounded-full object-cover ring-1 ring-border">
                                     @elseif($reply->user)
                                         <img src="https://ui-avatars.com/api/?name={{ urlencode($reply->user->name) }}&background=6366f1&color=fff" class="h-8 w-8 rounded-full object-cover ring-1 ring-border">
                                     @else

@@ -85,6 +85,15 @@ class ConsultationController extends Controller
             'is_read' => false
         ]);
 
+        \App\Models\Notification::create([
+            'user_id' => $request->user_id,
+            'type' => 'doctor_message',
+            'title' => 'Tin nhắn từ Bác sĩ',
+            'message' => 'Bác sĩ vừa gửi cho bạn một tin nhắn mới.',
+            'link' => '/chatbot',
+            'is_read' => false,
+        ]);
+
         return response()->json([
             'success' => true,
             'message' => $consultation
@@ -110,7 +119,9 @@ class ConsultationController extends Controller
             return [
                 'id' => $doctor->id,
                 'name' => $doctor->name,
-                'avatar' => $doctor->avatar,
+                'avatar' => $doctor->avatar && !str_starts_with($doctor->avatar, 'http')
+                    ? asset('storage/' . $doctor->avatar)
+                    : ($doctor->avatar ?: 'https://ui-avatars.com/api/?name='.urlencode($doctor->name).'&background=10b981&color=fff'),
                 'specialty' => $doctor->specialty,
                 'unread_count' => $unreadCounts[$doctor->id] ?? 0,
             ];
@@ -181,6 +192,84 @@ class ConsultationController extends Controller
         return response()->json([
             'success' => true,
             'message' => $consultation
+        ]);
+    }
+
+    /**
+     * Return unread message count per user, for doctor badge display.
+     */
+    public function getUnreadSummary()
+    {
+        if (!session()->has('doctor_logged_in')) {
+            return response()->json(['success' => false, 'message' => 'Quyền truy cập bị từ chối!'], 403);
+        }
+
+        $doctor = session('doctor_logged_in');
+        $doctorId = is_array($doctor) ? ($doctor['id'] ?? null) : ($doctor->id ?? null);
+
+        $unreadCounts = Consultation::where('doctor_id', $doctorId)
+            ->where('sender', 'patient')
+            ->where('is_read', false)
+            ->groupBy('user_id')
+            ->selectRaw('user_id, count(*) as unread_count')
+            ->pluck('unread_count', 'user_id')
+            ->toArray();
+
+        $totalUnread = array_sum($unreadCounts);
+
+        return response()->json([
+            'success' => true,
+            'unread_counts' => $unreadCounts,
+            'total_unread' => $totalUnread,
+        ]);
+    }
+
+    /**
+     * Return all doctor → patient messages for the logged-in user.
+     * Used by user dashboard/chatbot polling.
+     */
+    public function getUserInbox()
+    {
+        $userId = \Illuminate\Support\Facades\Auth::id();
+
+        // Get last message from each doctor
+        $doctors = Doctor::where('status', 'active')->get();
+        $inbox = [];
+
+        foreach ($doctors as $doctor) {
+            $lastMsg = Consultation::where('doctor_id', $doctor->id)
+                ->where('user_id', $userId)
+                ->orderBy('created_at', 'desc')
+                ->first();
+
+            $unreadCount = Consultation::where('doctor_id', $doctor->id)
+                ->where('user_id', $userId)
+                ->where('sender', 'doctor')
+                ->where('is_read', false)
+                ->count();
+
+            if ($lastMsg) {
+                $inbox[] = [
+                    'doctor_id' => $doctor->id,
+                    'doctor_name' => $doctor->name,
+                    'doctor_specialty' => $doctor->specialty,
+                    'doctor_avatar' => $doctor->avatar && !str_starts_with($doctor->avatar, 'http')
+                        ? asset('storage/' . $doctor->avatar)
+                        : ($doctor->avatar ?: 'https://ui-avatars.com/api/?name='.urlencode($doctor->name).'&background=10b981&color=fff'),
+                    'last_message' => $lastMsg->message,
+                    'last_message_time' => $lastMsg->created_at,
+                    'last_sender' => $lastMsg->sender,
+                    'unread_count' => $unreadCount,
+                ];
+            }
+        }
+
+        // Sort by last message time
+        usort($inbox, fn($a, $b) => strtotime($b['last_message_time']) - strtotime($a['last_message_time']));
+
+        return response()->json([
+            'success' => true,
+            'inbox' => $inbox,
         ]);
     }
 }

@@ -994,7 +994,12 @@
                         <div class="glass rounded-3xl p-6 lg:col-span-1 text-center flex flex-col items-center justify-center relative overflow-hidden">
                             <div class="absolute -right-20 -top-20 h-40 w-40 rounded-full bg-sky-500/5 blur-3xl"></div>
                             
-                            <img src="{{ $doctor->avatar }}" id="profile-preview-avatar" class="h-24 w-24 rounded-full border-2 border-sky-500/40 object-cover shadow-glow mb-4">
+                            <div class="relative group/avatar mb-4">
+                                <img src="{{ $doctor->avatar }}" id="profile-preview-avatar" class="h-24 w-24 rounded-full border-2 border-sky-500/40 object-cover shadow-glow transition-transform duration-500 group-hover/avatar:scale-105">
+                                <button type="button" onclick="document.getElementById('prof-avatar').click()" class="absolute -bottom-1 -right-1 flex h-8 w-8 items-center justify-center rounded-xl gradient-primary text-white shadow-lg transition-transform hover:scale-110 active:scale-95 z-20">
+                                    <i data-lucide="camera" class="h-4 w-4"></i>
+                                </button>
+                            </div>
                             <h3 class="text-lg font-bold text-white" id="profile-preview-name">{{ $doctor->name }}</h3>
                             <span class="px-3 py-1 rounded-full text-[10px] font-black uppercase bg-sky-500/10 text-sky-400 border border-sky-500/20 mt-2">{{ $doctor->specialty }}</span>
                             
@@ -1032,9 +1037,9 @@
                                     </div>
                                 </div>
 
-                                <div class="space-y-1.5">
-                                    <label for="prof-avatar" class="text-[10px] font-bold uppercase tracking-wider text-slate-400">Link ảnh đại diện (Avatar URL)</label>
-                                    <input id="prof-avatar" value="{{ $doctor->avatar }}" class="h-10 text-xs w-full rounded-xl border border-slate-700 bg-slate-900/50 px-3 font-semibold outline-none focus:border-sky-500">
+                                <div class="space-y-1.5 hidden">
+                                    <label for="prof-avatar" class="text-[10px] font-bold uppercase tracking-wider text-slate-400">Ảnh đại diện (Upload)</label>
+                                    <input type="file" id="prof-avatar" accept="image/*" onchange="previewDoctorAvatar(this)">
                                 </div>
 
                                 <div class="space-y-1.5">
@@ -1254,34 +1259,50 @@
             });
         }
 
-        function renderPatientTrendChart(patient) {
+        async function renderPatientTrendChart(patient) {
             if (currentChart) {
                 currentChart.destroy();
             }
 
             const ctx = document.getElementById('patientTrendChart').getContext('2d');
-            
-            // Mocking trend data based on user variables
-            const labels = ['Thứ 2', 'Thứ 3', 'Thứ 4', 'Thứ 5', 'Thứ 6', 'Thứ 7', 'Chủ nhật'];
-            const heartRates = [
-                patient.heart_rate ? patient.heart_rate - 2 : 72,
-                patient.heart_rate ? patient.heart_rate + 3 : 75,
-                patient.heart_rate ? patient.heart_rate : 74,
-                patient.heart_rate ? patient.heart_rate - 5 : 70,
-                patient.heart_rate ? patient.heart_rate + 10 : 82,
-                patient.heart_rate ? patient.heart_rate + 1 : 75,
-                patient.heart_rate ? patient.heart_rate : 74,
-            ];
-            
-            const steps = [
-                (patient.steps || 6000) - 1200,
-                (patient.steps || 6000) + 500,
-                (patient.steps || 6000) - 200,
-                (patient.steps || 6000) + 1500,
-                (patient.steps || 6000) - 800,
-                (patient.steps || 6000) + 3000,
-                (patient.steps || 6000)
-            ];
+
+            // Try loading real health history from DB
+            let labels = [];
+            let heartRates = [];
+            let stepsData = [];
+
+            try {
+                const res = await fetch(`/doctor/patients/${patient.id}/health-history`);
+                const data = await res.json();
+
+                if (data.success && data.metrics && data.metrics.length > 0) {
+                    data.metrics.forEach(m => {
+                        const d = new Date(m.recorded_at);
+                        labels.push(d.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit' }));
+                        heartRates.push(m.heart_rate || patient.heart_rate || 75);
+                        stepsData.push(m.steps || patient.steps || 6000);
+                    });
+                }
+            } catch (e) {
+                console.warn('Could not load real health history, using fallback', e);
+            }
+
+            // Fallback to mock data if no real data
+            if (labels.length === 0) {
+                labels = ['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN'];
+                heartRates = [
+                    (patient.heart_rate || 74) - 2, (patient.heart_rate || 74) + 3,
+                    (patient.heart_rate || 74), (patient.heart_rate || 74) - 5,
+                    (patient.heart_rate || 74) + 10, (patient.heart_rate || 74) + 1,
+                    (patient.heart_rate || 74)
+                ];
+                stepsData = [
+                    (patient.steps || 6000) - 1200, (patient.steps || 6000) + 500,
+                    (patient.steps || 6000) - 200, (patient.steps || 6000) + 1500,
+                    (patient.steps || 6000) - 800, (patient.steps || 6000) + 3000,
+                    (patient.steps || 6000)
+                ];
+            }
 
             currentChart = new Chart(ctx, {
                 type: 'line',
@@ -1300,7 +1321,7 @@
                         },
                         {
                             label: 'Bước chân',
-                            data: steps,
+                            data: stepsData,
                             borderColor: '#38bdf8',
                             borderWidth: 2.5,
                             backgroundColor: 'rgba(56, 189, 248, 0.05)',
@@ -1315,29 +1336,18 @@
                     maintainAspectRatio: false,
                     scales: {
                         y: {
-                            type: 'linear',
-                            display: true,
-                            position: 'left',
+                            type: 'linear', display: true, position: 'left',
                             grid: { color: 'rgba(255, 255, 255, 0.05)' },
                             ticks: { color: '#94a3b8', font: { size: 9 } }
                         },
                         y1: {
-                            type: 'linear',
-                            display: true,
-                            position: 'right',
+                            type: 'linear', display: true, position: 'right',
                             grid: { drawOnChartArea: false },
                             ticks: { color: '#94a3b8', font: { size: 9 } }
                         },
-                        x: {
-                            grid: { display: false },
-                            ticks: { color: '#94a3b8', font: { size: 9 } }
-                        }
+                        x: { grid: { display: false }, ticks: { color: '#94a3b8', font: { size: 9 } } }
                     },
-                    plugins: {
-                        legend: {
-                            labels: { color: '#e2e8f0', font: { size: 10 } }
-                        }
-                    }
+                    plugins: { legend: { labels: { color: '#e2e8f0', font: { size: 10 } } } }
                 }
             });
         }
@@ -1403,6 +1413,9 @@
             });
         }
 
+        // Auto-polling variables
+        let chatPollingInterval = null;
+
         function openChatWithPatient(patientId, name, avatar) {
             switchTab('consultations');
             selectPatientForChat(patientId, name, avatar);
@@ -1410,6 +1423,9 @@
 
         function selectPatientForChat(userId, name, avatar) {
             selectedChatUserId = userId;
+
+            // Clear previous polling
+            if (chatPollingInterval) clearInterval(chatPollingInterval);
 
             // Highlight contact btn
             document.querySelectorAll('.btn-chat-patient').forEach(btn => {
@@ -1427,13 +1443,22 @@
             document.getElementById('chat-active-name').innerText = name;
             document.getElementById('chat-active-user-id').value = userId;
 
-            // Load Chat Messages
+            // Load Chat Messages immediately
             loadChatMessages(userId);
+
+            // Start polling every 5 seconds
+            chatPollingInterval = setInterval(() => {
+                if (selectedChatUserId === userId) {
+                    loadChatMessages(userId);
+                    // Also refresh unread badges
+                    loadUnreadBadges();
+                }
+            }, 5000);
         }
 
         function loadChatMessages(userId) {
             const container = document.getElementById('chat-messages-container');
-            container.innerHTML = '<p class="text-xs text-slate-500 text-center italic py-10">Đang tải tin nhắn tư vấn...</p>';
+            const wasAtBottom = container.scrollHeight - container.scrollTop <= container.clientHeight + 50;
 
             fetch(`/doctor/consultations/chat/${userId}`)
             .then(res => res.json())
@@ -1443,7 +1468,7 @@
                     data.messages.forEach(msg => {
                         const isDoc = msg.sender === 'doctor';
                         const bubble = document.createElement('div');
-                        bubble.className = `flex ${isDoc ? 'justify-end' : 'justify-start'}`;
+                        bubble.className = `flex ${isDoc ? 'justify-end' : 'justify-start'} items-end gap-2`;
                         
                         let attachmentHtml = '';
                         if(msg.file_path) {
@@ -1459,7 +1484,7 @@
                         }
 
                         bubble.innerHTML = `
-                            <div class="max-w-[70%] p-3.5 rounded-2xl text-xs font-semibold ${isDoc ? 'bg-sky-600 text-white rounded-tr-none' : 'bg-slate-800 text-slate-200 rounded-tl-none'}">
+                            <div class="max-w-[70%] p-3.5 rounded-2xl text-xs font-semibold ${isDoc ? 'bg-sky-600 text-white rounded-tr-none' : 'bg-slate-800 text-slate-200 rounded-tl-none'} shadow-sm">
                                 <p class="font-normal leading-relaxed">${msg.message}</p>
                                 ${attachmentHtml}
                                 <span class="block text-[8px] text-right mt-1.5 opacity-60">${new Date(msg.created_at).toLocaleTimeString('vi-VN', {hour: '2-digit', minute:'2-digit'})}</span>
@@ -1470,12 +1495,12 @@
                 } else {
                     container.innerHTML = '<p class="text-xs text-slate-550 text-center italic py-10">Chưa có lịch sử nhắn tin. Gửi lời khuyên y tế của bạn ngay.</p>';
                 }
-                container.scrollTop = container.scrollHeight;
+                // Only scroll to bottom if user was already at bottom
+                if (wasAtBottom) container.scrollTop = container.scrollHeight;
                 lucide.createIcons();
             })
             .catch(err => {
                 console.error(err);
-                container.innerHTML = '<p class="text-xs text-rose-400 text-center italic py-10">Lỗi kết nối tải tin nhắn.</p>';
             });
         }
 
@@ -1497,9 +1522,37 @@
             document.getElementById('selected-file-indicator').classList.add('hidden');
         }
 
+        function loadUnreadBadges() {
+            fetch('/doctor/consultations/unread-summary')
+            .then(res => res.json())
+            .then(data => {
+                if (!data.success) return;
+                // Update badge for each patient button
+                document.querySelectorAll('.btn-chat-patient').forEach(btn => {
+                    const userId = btn.id.replace('btn-chat-patient-', '');
+                    const count = data.unread_counts[userId] || 0;
+                    let badge = btn.querySelector('.unread-badge');
+                    if (count > 0) {
+                        if (!badge) {
+                            badge = document.createElement('span');
+                            badge.className = 'unread-badge absolute right-2 top-2 h-5 w-5 rounded-full bg-rose-500 text-white text-[9px] font-black flex items-center justify-center shadow-glow animate-pulse';
+                            btn.appendChild(badge);
+                        }
+                        badge.innerText = count > 9 ? '9+' : count;
+                    } else {
+                        if (badge) badge.remove();
+                    }
+                });
+            })
+            .catch(err => console.error('Unread badge error:', err));
+        }
+
         function sendChatMessage() {
             const userId = document.getElementById('chat-active-user-id').value;
             const message = document.getElementById('chat-input-message').value;
+
+            if (!userId) { alert('Vui lòng chọn bệnh nhân!'); return; }
+            if (!message.trim() && !selectedFile) { alert('Vui lòng nhập tin nhắn!'); return; }
 
             const formData = new FormData();
             formData.append('user_id', userId);
@@ -1606,23 +1659,25 @@
             const phone = document.getElementById('prof-phone').value;
             const specialty = document.getElementById('prof-specialty').value;
             const place = document.getElementById('prof-place').value;
-            const avatar = document.getElementById('prof-avatar').value;
             const address = document.getElementById('prof-address').value;
+            const avatarFile = document.getElementById('prof-avatar').files[0];
+
+            let formData = new FormData();
+            formData.append('name', name);
+            formData.append('phone', phone);
+            formData.append('specialty', specialty);
+            formData.append('place', place);
+            formData.append('address', address);
+            if (avatarFile) {
+                formData.append('avatar', avatarFile);
+            }
 
             fetch('/doctor/profile', {
                 method: 'POST',
                 headers: {
-                    'Content-Type': 'application/json',
                     'X-CSRF-TOKEN': '{{ csrf_token() }}'
                 },
-                body: JSON.stringify({
-                    name: name,
-                    phone: phone,
-                    specialty: specialty,
-                    place: place,
-                    avatar: avatar,
-                    address: address
-                })
+                body: formData
             })
             .then(res => res.json())
             .then(data => {
@@ -1647,7 +1702,21 @@
         }
 
         // ------------------ CHARTS ENGINE ------------------
+        function previewDoctorAvatar(input) {
+            if (input.files && input.files[0]) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    document.getElementById('profile-preview-avatar').src = e.target.result;
+                }
+                reader.readAsDataURL(input.files[0]);
+            }
+        }
+
         document.addEventListener('DOMContentLoaded', () => {
+            // Load and poll unread badges globally
+            loadUnreadBadges();
+            setInterval(loadUnreadBadges, 8000);
+
             // Overall BMI chart
             const bmiCtx = document.getElementById('bmiPieChart').getContext('2d');
             new Chart(bmiCtx, {

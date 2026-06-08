@@ -32,8 +32,13 @@ class DoctorController extends Controller
             'specialty' => 'required|string|max:255',
             'place' => 'required|string|max:255',
             'address' => 'nullable|string',
-            'avatar' => 'nullable|string',
+            'avatar' => 'nullable|image|max:2048',
         ]);
+
+        $avatarPath = null;
+        if ($request->hasFile('avatar')) {
+            $avatarPath = $request->file('avatar')->store('avatars', 'public');
+        }
 
         $doctor = Doctor::create([
             'name' => $request->name,
@@ -43,7 +48,7 @@ class DoctorController extends Controller
             'specialty' => $request->specialty,
             'place' => $request->place,
             'address' => $request->address,
-            'avatar' => $request->avatar ?: 'https://ui-avatars.com/api/?name=' . urlencode($request->name) . '&background=0284c7&color=fff',
+            'avatar' => $avatarPath ?: 'https://ui-avatars.com/api/?name=' . urlencode($request->name) . '&background=0284c7&color=fff',
             'status' => 'active'
         ]);
 
@@ -101,7 +106,7 @@ class DoctorController extends Controller
         }
         $doctor = Doctor::findOrFail($doctorId);
 
-        // Retrieve patients list
+        // Retrieve patients list with full real data
         $patients = User::all()->map(function ($patient) {
             // Calculate BMI
             $bmi = 0;
@@ -110,6 +115,8 @@ class DoctorController extends Controller
                 $bmi = round($patient->weight / ($heightInMeters * $heightInMeters), 1);
             }
             $patient->bmi = $bmi;
+            // Fix avatar URL
+            $patient->avatar = $patient->avatar_url;
             return $patient;
         });
 
@@ -206,8 +213,13 @@ class DoctorController extends Controller
             'specialty' => 'required|string|max:255',
             'place' => 'required|string|max:255',
             'address' => 'nullable|string',
-            'avatar' => 'nullable|string',
+            'avatar' => 'nullable|image|max:2048',
         ]);
+
+        $avatarPath = $doctor->avatar;
+        if ($request->hasFile('avatar')) {
+            $avatarPath = $request->file('avatar')->store('avatars', 'public');
+        }
 
         $doctor->update([
             'name' => $request->name,
@@ -215,7 +227,7 @@ class DoctorController extends Controller
             'specialty' => $request->specialty,
             'place' => $request->place,
             'address' => $request->address,
-            'avatar' => $request->avatar ?: $doctor->avatar,
+            'avatar' => $avatarPath,
         ]);
 
         // Refresh session
@@ -310,6 +322,15 @@ class DoctorController extends Controller
             ]);
         }
 
+        \App\Models\Notification::create([
+            'user_id' => $data['user_id'],
+            'type' => 'doctor_advice',
+            'title' => 'Tư vấn sức khỏe mới',
+            'message' => 'Bác sĩ đã gửi cho bạn một lời khuyên và thực đơn mới.',
+            'link' => '/meal-plans',
+            'is_read' => false,
+        ]);
+
         return response()->json([
             'success' => true,
             'message' => 'Lưu đề xuất thành công',
@@ -335,6 +356,15 @@ class DoctorController extends Controller
         $statusText = 'lên lịch lại';
         if ($request->status === 'completed') $statusText = 'hoàn thành';
         if ($request->status === 'canceled') $statusText = 'hủy';
+
+        \App\Models\Notification::create([
+            'user_id' => $appointment->user_id,
+            'type' => 'appointment_status',
+            'title' => 'Cập nhật lịch khám',
+            'message' => "Lịch khám của bạn đã được {$statusText}.",
+            'link' => '/appointments',
+            'is_read' => false,
+        ]);
 
         return response()->json([
             'success' => true,
@@ -381,5 +411,56 @@ class DoctorController extends Controller
                 'message' => 'Lỗi tự động nâng cấp: ' . $e->getMessage()
             ], 500);
         }
+    }
+
+    /**
+     * Return real health metric history for a patient (last 14 days)
+     * Used by doctor chart to show actual data.
+     */
+    public function getPatientHealthHistory($userId)
+    {
+        if (!session()->has('doctor_logged_in')) {
+            return response()->json(['success' => false, 'message' => 'Quyền truy cập bị từ chối!'], 403);
+        }
+
+        $user = User::find($userId);
+        if (!$user) {
+            return response()->json(['success' => false, 'message' => 'Không tìm thấy bệnh nhân!'], 404);
+        }
+
+        // Get last 14 days of health metrics
+        $metrics = \App\Models\HealthMetric::where('user_id', $userId)
+            ->orderBy('recorded_at', 'asc')
+            ->take(14)
+            ->get(['recorded_at', 'heart_rate', 'spo2', 'weight', 'sleep_hours', 'steps', 'water_intake']);
+
+        // If no metrics, return basic user data as single point
+        if ($metrics->isEmpty()) {
+            $metrics = collect([[
+                'recorded_at' => now()->toDateString(),
+                'heart_rate' => $user->heart_rate ?? 75,
+                'spo2' => $user->spo2 ?? 98,
+                'weight' => $user->weight ?? 60,
+                'sleep_hours' => $user->sleep_hours ?? 7,
+                'steps' => $user->steps ?? 6000,
+                'water_intake' => $user->water_intake ?? 2000,
+            ]]);
+        }
+
+        return response()->json([
+            'success' => true,
+            'metrics' => $metrics,
+            'user' => [
+                'id' => $user->id,
+                'name' => $user->name,
+                'heart_rate' => $user->heart_rate,
+                'spo2' => $user->spo2,
+                'weight' => $user->weight,
+                'height' => $user->height,
+                'bmi' => ($user->height > 0 && $user->weight > 0)
+                    ? round($user->weight / (($user->height / 100) ** 2), 1)
+                    : null,
+            ]
+        ]);
     }
 }

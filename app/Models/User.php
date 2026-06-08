@@ -39,4 +39,15 @@ class User extends Authenticatable
     {
         return $this->hasMany(HealthMetric::class);
     }
+
+    public function getAvatarUrlAttribute()
+    {
+        if (!$this->avatar) {
+            return 'https://ui-avatars.com/api/?name=' . urlencode($this->name) . '&background=6366f1&color=fff';
+        }
+        if (str_starts_with($this->avatar, 'http')) {
+            return $this->avatar;
+        }
+        return asset('storage/' . $this->avatar);
+    }
 }

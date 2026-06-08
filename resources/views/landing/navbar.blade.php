@@ -55,11 +55,7 @@
                         <div class="relative group cursor-pointer">
                             <div class="flex items-center gap-2 rounded-full border border-border bg-card/40 p-1 pr-3 transition-all hover:border-primary/30 hover:bg-card/60 shadow-sm">
                                 <div class="relative shrink-0">
-                                    @if(Auth::user()->avatar)
-                                        <img src="{{ asset('storage/' . Auth::user()->avatar) }}" alt="user" class="h-8 w-8 rounded-full object-cover ring-1 ring-border">
-                                    @else
-                                        <img src="https://ui-avatars.com/api/?name={{ urlencode(Auth::user()->name) }}&background=6366f1&color=fff" alt="user" class="h-8 w-8 rounded-full object-cover ring-1 ring-border">
-                                    @endif
+                                        <img src="{{ Auth::user()->avatar_url }}" alt="user" class="h-8 w-8 rounded-full object-cover ring-1 ring-border">
                                 </div>
                                 <i data-lucide="chevron-down" class="h-4 w-4 text-muted-foreground/60 transition-transform group-hover:translate-y-0.5"></i>
                             </div>

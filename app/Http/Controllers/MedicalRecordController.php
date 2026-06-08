@@ -39,6 +39,15 @@ class MedicalRecordController extends Controller
             'recorded_at' => now(),
         ]);
 
+        \App\Models\Notification::create([
+            'user_id' => $request->user_id,
+            'type' => 'medical_record',
+            'title' => 'Hồ sơ bệnh án mới',
+            'message' => 'Bác sĩ đã cập nhật hồ sơ bệnh án của bạn sau buổi khám.',
+            'link' => '/dashboard',
+            'is_read' => false,
+        ]);
+
         return response()->json([
             'success' => true,
             'message' => 'Lưu hồ sơ bệnh án thành công!',

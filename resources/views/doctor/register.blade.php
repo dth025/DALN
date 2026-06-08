@@ -71,7 +71,7 @@
         @endif
 
         <!-- Form -->
-        <form method="POST" action="{{ route('doctor.register.submit') }}" class="space-y-6">
+        <form method="POST" action="{{ route('doctor.register.submit') }}" class="space-y-6" enctype="multipart/form-data">
             @csrf
             
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -126,10 +126,10 @@
 
                 <!-- Avatar Link -->
                 <div class="space-y-1.5">
-                    <label for="avatar" class="text-[11px] font-bold uppercase tracking-wider text-slate-400">Ảnh đại diện (Link URL)</label>
+                    <label for="avatar" class="text-[11px] font-bold uppercase tracking-wider text-slate-400">Ảnh đại diện (Upload)</label>
                     <div class="relative">
                         <i data-lucide="image" class="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400"></i>
-                        <input id="avatar" name="avatar" type="url" value="{{ old('avatar') }}" placeholder="https://i.pravatar.cc/100?img=68" class="h-11 w-full rounded-xl border border-slate-700 bg-slate-900/50 pl-10 pr-4 text-xs font-semibold outline-none transition-all focus:border-sky-500 focus:ring-4 focus:ring-sky-500/10">
+                        <input id="avatar" name="avatar" type="file" accept="image/*" class="h-11 w-full rounded-xl border border-slate-700 bg-slate-900/50 pl-10 pr-4 text-xs font-semibold outline-none transition-all focus:border-sky-500 focus:ring-4 focus:ring-sky-500/10" style="padding-top: 0.6rem;">
                     </div>
                 </div>
             </div>
