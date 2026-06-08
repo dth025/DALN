@@ -27,6 +27,7 @@ Route::get('/admin', [AdminController::class, 'index'])->name('admin.index');
 Route::post('/admin', [AdminController::class, 'login'])->name('admin.login.submit');
 Route::post('/admin/logout', [AdminController::class, 'logout'])->name('admin.logout');
 Route::post('/admin/users/{id}/toggle-status', [AdminController::class, 'toggleUserStatus'])->name('admin.users.toggleStatus');
+Route::post('/admin/users/{id}/update-plan', [AdminController::class, 'updateUserPlan'])->name('admin.users.updatePlan');
 Route::delete('/admin/users/{id}', [AdminController::class, 'deleteUser'])->name('admin.users.delete');
 Route::post('/admin/doctors/save', [AdminController::class, 'saveDoctor'])->name('admin.doctors.save');
 Route::post('/admin/doctors/{id}/toggle-status', [AdminController::class, 'toggleDoctorStatus'])->name('admin.doctors.toggleStatus');

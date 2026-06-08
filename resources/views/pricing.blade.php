@@ -83,12 +83,16 @@
                 </ul>
             </div>
 
-            @if($p['action'] === 'free')
+            @if($p['name'] === $currentPlan)
+                <button disabled class="mt-10 block w-full rounded-2xl py-4 text-center text-xs font-black uppercase tracking-widest bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 cursor-not-allowed">
+                    ✓ Đang sử dụng
+                </button>
+            @elseif($p['action'] === 'free')
                 <button disabled class="mt-10 block w-full rounded-2xl py-4 text-center text-xs font-black uppercase tracking-widest bg-muted/30 text-muted-foreground/60 border border-border/20 cursor-not-allowed">
                     {{ $p['cta'] }}
                 </button>
             @else
-                <button @click="openCheckout('{{ $p['name'] }}', {{ $p['raw_price'] }})" 
+                <button @click="openCheckout('{{ $p['name'] }}', {{ $p['raw_price'] }})"
                         class="mt-10 block w-full rounded-2xl py-4 text-center text-xs font-black uppercase tracking-widest transition-all hover:scale-[1.02] active:scale-95 cursor-pointer {{ $p['popular'] ? 'gradient-primary text-white shadow-glow hover:shadow-[0_0_25px_rgba(168,85,247,0.4)]' : 'border-2 border-border bg-background/60 text-foreground hover:bg-muted/40' }}">
                     {{ $p['cta'] }}
                 </button>
