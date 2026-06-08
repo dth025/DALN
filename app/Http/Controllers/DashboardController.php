@@ -67,13 +67,87 @@ class DashboardController extends Controller
         $whoScore = $this->calculateWhoScore($user);
         $streak = $this->calculateStreak($user);
 
+        // Doctor messages (latest from each doctor)
+        $doctorMessages = \App\Models\Consultation::where('user_id', $user->id)
+            ->where('sender', 'doctor')
+            ->with('doctor')
+            ->orderBy('created_at', 'desc')
+            ->take(5)
+            ->get()
+            ->map(function ($msg) {
+                return [
+                    'doctor_name' => $msg->doctor->name ?? 'Bác sĩ',
+                    'doctor_specialty' => $msg->doctor->specialty ?? '',
+                    'doctor_avatar' => $msg->doctor
+                        ? ($msg->doctor->avatar && !str_starts_with($msg->doctor->avatar, 'http')
+                            ? asset('storage/' . $msg->doctor->avatar)
+                            : ($msg->doctor->avatar ?: 'https://ui-avatars.com/api/?name='.urlencode($msg->doctor->name).'&background=10b981&color=fff'))
+                        : 'https://ui-avatars.com/api/?name=BS&background=10b981&color=fff',
+                    'message' => $msg->message,
+                    'time' => $msg->created_at->diffForHumans(),
+                    'is_read' => $msg->is_read,
+                    'doctor_id' => $msg->doctor_id,
+                    'file_path' => $msg->file_path,
+                    'file_type' => $msg->file_type,
+                ];
+            });
+
+        // Recent medical records for user
+        $medicalRecords = \App\Models\MedicalRecord::where('user_id', $user->id)
+            ->with('doctor')
+            ->orderBy('recorded_at', 'desc')
+            ->take(3)
+            ->get()
+            ->map(function ($rec) {
+                return [
+                    'doctor_name' => $rec->doctor->name ?? 'Bác sĩ',
+                    'doctor_specialty' => $rec->doctor->specialty ?? '',
+                    'diagnosis' => $rec->diagnosis,
+                    'symptoms' => $rec->symptoms,
+                    'prescribed_medicine' => $rec->prescribed_medicine,
+                    'treatment_instructions' => $rec->treatment_instructions,
+                    'recorded_at' => \Carbon\Carbon::parse($rec->recorded_at)->format('d/m/Y'),
+                    'recorded_at_human' => \Carbon\Carbon::parse($rec->recorded_at)->diffForHumans(),
+                ];
+            });
+
+        // Upcoming appointments
+        $upcomingAppointments = \App\Models\Appointment::where('user_id', $user->id)
+            ->where('status', 'scheduled')
+            ->where('appointment_date', '>=', now())
+            ->orderBy('appointment_date', 'asc')
+            ->take(3)
+            ->get()
+            ->map(function ($appt) {
+                return [
+                    'id' => $appt->id,
+                    'doctor_name' => $appt->doctor_name ?? ($appt->doctor->name ?? 'Bác sĩ'),
+                    'specialty' => $appt->specialty ?? '',
+                    'date' => \Carbon\Carbon::parse($appt->appointment_date)->format('d/m/Y'),
+                    'time' => \Carbon\Carbon::parse($appt->appointment_date)->format('H:i'),
+                    'date_human' => \Carbon\Carbon::parse($appt->appointment_date)->diffForHumans(),
+                    'status' => $appt->status,
+                    'notes' => $appt->notes ?? '',
+                ];
+            });
+
+        // Unread doctor message count
+        $unreadDoctorMessages = \App\Models\Consultation::where('user_id', $user->id)
+            ->where('sender', 'doctor')
+            ->where('is_read', false)
+            ->count();
+
         return view('dashboard', [
             'user' => $user,
             'latest' => $latest,
             'previous' => $previous,
             'whoScore' => $whoScore,
             'streak' => $streak,
-            'history' => $history
+            'history' => $history,
+            'doctorMessages' => $doctorMessages,
+            'medicalRecords' => $medicalRecords,
+            'upcomingAppointments' => $upcomingAppointments,
+            'unreadDoctorMessages' => $unreadDoctorMessages,
         ]);
     }
 

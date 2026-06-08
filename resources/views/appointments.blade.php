@@ -47,6 +47,32 @@
     </div>
 </div>
 
+<!-- Reschedule Modal -->
+<div id="rescheduleModal" style="display:none;" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50">
+    <div class="relative w-full max-w-md rounded-2xl bg-white p-6 shadow-lg">
+        <button onclick="closeRescheduleModal()" class="absolute right-3 top-3 text-muted-foreground">✕</button>
+        <h3 class="text-lg font-semibold mb-4">Đổi lịch khám</h3>
+
+        <form id="rescheduleForm" method="POST" action="">
+            @csrf
+            <div class="mb-3">
+                <label class="block text-xs text-muted-foreground mb-1">Bác sĩ</label>
+                <input type="text" id="reschedule_doctor_name" class="w-full rounded-lg border px-3 py-2" readonly />
+            </div>
+
+            <div class="mb-3">
+                <label class="block text-xs text-muted-foreground mb-1">Ngày & giờ mới</label>
+                <input type="datetime-local" name="appointment_date" id="reschedule_appointment_date" class="w-full rounded-lg border px-3 py-2" required />
+            </div>
+
+            <div class="flex justify-end gap-2 mt-4">
+                <button type="button" onclick="closeRescheduleModal()" class="rounded-lg border px-4 py-2">Hủy</button>
+                <button type="submit" class="rounded-lg gradient-primary px-4 py-2 text-white">Lưu thay đổi</button>
+            </div>
+        </form>
+    </div>
+</div>
+
 <script>
 function openBookingModal(doctorId, doctorName) {
     document.getElementById('booking_doctor_id').value = doctorId || '';
@@ -58,6 +84,17 @@ function closeBookingModal() {
     document.getElementById('bookingModal').style.display = 'none';
 }
 
+function openRescheduleModal(appointmentId, doctorName, currentDateTime) {
+    document.getElementById('reschedule_doctor_name').value = doctorName || '';
+    document.getElementById('reschedule_appointment_date').value = currentDateTime || '';
+    document.getElementById('rescheduleForm').action = '/appointments/' + appointmentId + '/reschedule';
+    document.getElementById('rescheduleModal').style.display = 'flex';
+}
+
+function closeRescheduleModal() {
+    document.getElementById('rescheduleModal').style.display = 'none';
+}
+
 // Attach click handlers to doctor choose buttons
 document.addEventListener('DOMContentLoaded', function () {
     document.querySelectorAll('.choose-doctor-btn').forEach(function (btn) {
@@ -67,6 +104,15 @@ document.addEventListener('DOMContentLoaded', function () {
             openBookingModal(id, name);
         });
     });
+    document.querySelectorAll('.reschedule-btn').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+            const appointmentId = this.getAttribute('data-appointment-id');
+            const doctorName = this.getAttribute('data-doctor-name');
+            const currentDateTime = this.getAttribute('data-appointment-date');
+            openRescheduleModal(appointmentId, doctorName, currentDateTime);
+        });
+    });
+
     // Main "Đặt lịch khám" button opens modal without preselecting doctor
     const mainBtn = document.getElementById('openBookingBtn');
     if (mainBtn) mainBtn.addEventListener('click', function(){ openBookingModal('', ''); });
@@ -191,7 +237,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 </div>
 
                 <div class="flex gap-2">
-                    <button class="rounded-lg border border-border px-3 py-1.5 text-xs font-medium hover:bg-accent">
+                    <button type="button" data-appointment-id="{{ $appointment->id }}" data-doctor-name="{{ $appointment->doctor_name }}" data-appointment-date="{{ \Carbon\Carbon::parse($appointment->appointment_date)->format('Y-m-d\TH:i') }}" class="reschedule-btn rounded-lg border border-border px-3 py-1.5 text-xs font-medium hover:bg-accent">
                         Đổi lịch
                     </button>
                     <button class="rounded-lg gradient-primary px-3 py-1.5 text-xs font-semibold text-primary-foreground shadow-soft">

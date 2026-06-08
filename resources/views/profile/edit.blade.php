@@ -62,11 +62,7 @@
                 <!-- Avatar Section -->
                 <div class="relative shrink-0 mx-auto md:mx-0">
                     <div class="relative group/avatar">
-                        @if(Auth::user()->avatar)
-                            <img id="avatar-preview" src="{{ asset('storage/' . Auth::user()->avatar) }}" alt="avatar" class="h-32 w-32 md:h-40 md:w-40 rounded-full object-cover ring-8 ring-card shadow-glow transition-transform duration-500 group-hover/avatar:scale-105">
-                        @else
-                            <img id="avatar-preview" src="https://i.pravatar.cc/300?img=12" alt="avatar" class="h-32 w-32 md:h-40 md:w-40 rounded-full object-cover ring-8 ring-card shadow-glow">
-                        @endif
+                        <img id="avatar-preview" src="{{ Auth::user()->avatar_url }}" alt="avatar" class="h-32 w-32 md:h-40 md:w-40 rounded-full object-cover ring-8 ring-card shadow-glow transition-transform duration-500 group-hover/avatar:scale-105">
                         
                         <button onclick="document.getElementById('avatar-input').click()" class="absolute -bottom-2 -right-2 flex h-10 w-10 items-center justify-center rounded-2xl gradient-primary text-white shadow-lg transition-transform hover:scale-110 active:scale-95 z-20">
                             <i data-lucide="camera" class="h-5 w-5"></i>
