@@ -15,6 +15,8 @@ class PricingController extends Controller
             ->orderBy('created_at', 'desc')
             ->get();
 
-        return view('pricing', compact('reviews'));
+        $currentPlan = auth()->user()->plan ?? 'Free';
+
+        return view('pricing', compact('reviews', 'currentPlan'));
     }
 }

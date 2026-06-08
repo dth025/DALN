@@ -315,8 +315,9 @@
                                 </div>
                                 <span class="text-[10px] font-bold text-success bg-success/10 px-2 py-0.5 rounded-full">+24%</span>
                             </div>
-                            <p class="mt-4 text-[10px] font-black uppercase tracking-wider text-muted-foreground">Doanh thu Tổng</p>
+                            <p class="mt-4 text-[10px] font-black uppercase tracking-wider text-muted-foreground">Doanh thu ước tính</p>
                             <p class="text-2xl font-black tracking-tight mt-1 font-display text-primary">{{ number_format($totalRevenue) }}<span class="text-xs ml-0.5 font-normal text-muted-foreground">đ</span></p>
+                            <p class="text-[9px] text-muted-foreground mt-0.5">Từ {{ $packagesSold['pro'] + $packagesSold['premium'] }} user trả phí</p>
                         </div>
 
                         <!-- Card 5 -->
@@ -351,10 +352,10 @@
                             <div class="flex items-center justify-between mb-6">
                                 <div>
                                     <h3 class="text-xs font-black uppercase tracking-widest text-primary">Phát triển tài chính</h3>
-                                    <h4 class="text-lg font-bold text-foreground mt-0.5">Biểu đồ Doanh thu hệ thống</h4>
+                                    <h4 class="text-lg font-bold text-foreground mt-0.5">Doanh thu ước tính theo tháng</h4>
                                 </div>
                                 <div class="inline-flex gap-2">
-                                    <button class="px-3 py-1.5 rounded-xl border border-border/40 bg-background/50 text-[10px] font-bold tracking-wider hover:bg-accent">5 tháng qua</button>
+                                    <button class="px-3 py-1.5 rounded-xl border border-border/40 bg-background/50 text-[10px] font-bold tracking-wider hover:bg-accent">6 tháng qua</button>
                                 </div>
                             </div>
                             <div class="flex-1 relative min-h-[300px]">
@@ -371,18 +372,24 @@
                             <div class="flex justify-center items-center h-48 w-full">
                                 <canvas id="packagesPieChart"></canvas>
                             </div>
+                            @php
+                                $totalPkgUsers = max(1, $packagesSold['free'] + $packagesSold['pro'] + $packagesSold['premium']);
+                                $freePct  = round($packagesSold['free'] / $totalPkgUsers * 100, 1);
+                                $proPct   = round($packagesSold['pro']  / $totalPkgUsers * 100, 1);
+                                $premPct  = round($packagesSold['premium'] / $totalPkgUsers * 100, 1);
+                            @endphp
                             <div class="grid grid-cols-3 gap-2 border-t border-border/20 pt-4 text-center">
                                 <div>
                                     <p class="text-[9px] font-black text-muted-foreground uppercase">Free</p>
-                                    <p class="text-base font-bold text-slate-400 mt-1">53.5%</p>
+                                    <p class="text-base font-bold text-slate-400 mt-1">{{ $freePct }}%</p>
                                 </div>
                                 <div>
                                     <p class="text-[9px] font-black text-primary uppercase">Pro</p>
-                                    <p class="text-base font-bold text-primary mt-1">28.7%</p>
+                                    <p class="text-base font-bold text-primary mt-1">{{ $proPct }}%</p>
                                 </div>
                                 <div>
                                     <p class="text-[9px] font-black text-purple-400 uppercase">Premium</p>
-                                    <p class="text-base font-bold text-purple-400 mt-1">17.8%</p>
+                                    <p class="text-base font-bold text-purple-400 mt-1">{{ $premPct }}%</p>
                                 </div>
                             </div>
                         </div>
@@ -405,7 +412,7 @@
                                         </tr>
                                     </thead>
                                     <tbody class="divide-y divide-border/20 text-xs font-semibold">
-                                        @foreach($recentTransactions as $txn)
+                                        @forelse($recentTransactions as $txn)
                                         <tr>
                                             <td class="py-3.5 text-primary font-bold">{{ $txn['id'] }}</td>
                                             <td class="py-3.5">{{ $txn['name'] }}</td>
@@ -416,12 +423,16 @@
                                             </td>
                                             <td class="py-3.5 text-right font-bold">{{ number_format($txn['amount']) }}đ</td>
                                             <td class="py-3.5 text-right">
-                                                <span class="inline-flex items-center gap-1 text-[10px] font-bold {{ $txn['status'] === 'success' ? 'text-emerald-400 bg-emerald-400/15' : 'text-rose-400 bg-rose-400/15' }} px-2 py-0.5 rounded-full">
-                                                    {{ $txn['status'] === 'success' ? 'Thành công' : 'Thất bại' }}
+                                                <span class="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-400 bg-emerald-400/15 px-2 py-0.5 rounded-full">
+                                                    Đang dùng
                                                 </span>
                                             </td>
                                         </tr>
-                                        @endforeach
+                                        @empty
+                                        <tr>
+                                            <td colspan="5" class="py-6 text-center text-xs text-muted-foreground">Chưa có user trả phí.</td>
+                                        </tr>
+                                        @endforelse
                                     </tbody>
                                 </table>
                             </div>
@@ -623,46 +634,59 @@
                         </div>
                     </div>
 
-                    <!-- Top statistics -->
+                    @php
+                        $monthlyThisMonth = end($monthlyRevenue['data']);
+                        $paidTotal = $packagesSold['pro'] + $packagesSold['premium'];
+                        $conversionRate = $totalUsers > 0 ? round($paidTotal / $totalUsers * 100, 1) : 0;
+                        $premiumRate    = $totalUsers > 0 ? round($packagesSold['premium'] / $totalUsers * 100, 1) : 0;
+                    @endphp
+                    <!-- Top statistics (dữ liệu thực) -->
                     <div class="grid grid-cols-2 gap-4 sm:grid-cols-4">
                         <div class="glass rounded-2xl border border-border/40 p-5 shadow-soft">
                             <p class="text-[10px] font-black uppercase tracking-wider text-muted-foreground">Doanh thu hôm nay</p>
                             <p class="text-2xl font-black mt-2 font-display text-emerald-500">{{ number_format($revenueToday) }}đ</p>
+                            <p class="text-[9px] text-muted-foreground mt-1">Gói nâng cấp trong ngày</p>
                         </div>
                         <div class="glass rounded-2xl border border-border/40 p-5 shadow-soft">
                             <p class="text-[10px] font-black uppercase tracking-wider text-muted-foreground">Doanh thu tháng này</p>
-                            <p class="text-2xl font-black mt-2 font-display text-primary">{{ number_format($monthlyRevenue['data'][4]) }}đ</p>
+                            <p class="text-2xl font-black mt-2 font-display text-primary">{{ number_format($monthlyThisMonth) }}đ</p>
+                            <p class="text-[9px] text-muted-foreground mt-1">User đăng ký tháng {{ now()->format('n') }}</p>
                         </div>
                         <div class="glass rounded-2xl border border-border/40 p-5 shadow-soft">
-                            <p class="text-[10px] font-black uppercase tracking-wider text-muted-foreground">Tổng Doanh thu lũy kế</p>
+                            <p class="text-[10px] font-black uppercase tracking-wider text-muted-foreground">Tổng ước tính lũy kế</p>
                             <p class="text-2xl font-black mt-2 font-display text-purple-500">{{ number_format($totalRevenue) }}đ</p>
+                            <p class="text-[9px] text-muted-foreground mt-1">{{ $paidTotal }} user trả phí</p>
                         </div>
                         <div class="glass rounded-2xl border border-border/40 p-5 shadow-soft">
-                            <p class="text-[10px] font-black uppercase tracking-wider text-muted-foreground">Tỷ lệ chuyển đổi Premium</p>
-                            <p class="text-2xl font-black mt-2 font-display text-amber-500">22.4%</p>
+                            <p class="text-[10px] font-black uppercase tracking-wider text-muted-foreground">Tỷ lệ chuyển đổi trả phí</p>
+                            <p class="text-2xl font-black mt-2 font-display text-amber-500">{{ $conversionRate }}%</p>
+                            <p class="text-[9px] text-muted-foreground mt-1">Premium: {{ $premiumRate }}%</p>
                         </div>
                     </div>
 
                     <!-- Transactions List Card -->
                     <div class="glass rounded-3xl border border-border/40 overflow-hidden shadow-soft">
                         <div class="p-6 border-b border-border/20 flex justify-between items-center bg-card/30">
-                            <h3 class="text-base font-bold text-foreground">Nhật ký giao dịch chi tiết</h3>
-                            <input onkeyup="handleTxnSearch(this)" placeholder="Lọc theo mã TXN hoặc tên..." class="h-9 w-60 rounded-full border border-border/50 bg-background/50 pl-4 pr-4 text-xs font-semibold outline-none focus:border-primary">
+                            <div>
+                                <h3 class="text-base font-bold text-foreground">Nhật ký user trả phí</h3>
+                                <p class="text-[10px] text-muted-foreground mt-0.5">Dựa trên gói đăng ký hiện tại của người dùng trong hệ thống</p>
+                            </div>
+                            <input onkeyup="handleTxnSearch(this)" placeholder="Lọc theo mã hoặc tên..." class="h-9 w-56 rounded-full border border-border/50 bg-background/50 pl-4 pr-4 text-xs font-semibold outline-none focus:border-primary">
                         </div>
                         <div class="overflow-x-auto">
                             <table class="w-full text-left border-collapse">
                                 <thead>
                                     <tr class="border-b border-border/30 text-[10px] font-black uppercase tracking-wider text-muted-foreground bg-card/20">
-                                        <th class="p-4 pl-6">Mã giao dịch</th>
+                                        <th class="p-4 pl-6">Mã người dùng</th>
                                         <th class="p-4">Khách hàng</th>
-                                        <th class="p-4">Gói mua</th>
-                                        <th class="p-4">Thời gian</th>
-                                        <th class="p-4 text-right">Số tiền</th>
-                                        <th class="p-4 text-right pr-6">Cổng thanh toán</th>
+                                        <th class="p-4">Gói sử dụng</th>
+                                        <th class="p-4">Cập nhật lần cuối</th>
+                                        <th class="p-4 text-right">Giá gói / tháng</th>
+                                        <th class="p-4 text-right pr-6">Trạng thái</th>
                                     </tr>
                                 </thead>
                                 <tbody id="txn-table-body" class="divide-y divide-border/20 text-xs font-semibold">
-                                    @foreach($recentTransactions as $txn)
+                                    @forelse($recentTransactions as $txn)
                                     <tr class="txn-row" data-search="{{ strtolower($txn['id'] . ' ' . $txn['name']) }}">
                                         <td class="p-4 pl-6 text-primary font-bold">{{ $txn['id'] }}</td>
                                         <td class="p-4">{{ $txn['name'] }}</td>
@@ -673,9 +697,15 @@
                                         </td>
                                         <td class="p-4 text-muted-foreground">{{ $txn['date'] }}</td>
                                         <td class="p-4 text-right font-bold">{{ number_format($txn['amount']) }}đ</td>
-                                        <td class="p-4 text-right pr-6 text-muted-foreground font-semibold">Ví MoMo</td>
+                                        <td class="p-4 text-right pr-6">
+                                            <span class="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-400 bg-emerald-400/15 px-2 py-0.5 rounded-full">Đang dùng</span>
+                                        </td>
                                     </tr>
-                                    @endforeach
+                                    @empty
+                                    <tr>
+                                        <td colspan="6" class="p-8 text-center text-xs text-muted-foreground">Chưa có người dùng trả phí nào trong hệ thống.</td>
+                                    </tr>
+                                    @endforelse
                                 </tbody>
                             </table>
                         </div>
@@ -911,6 +941,21 @@
                     <div class="flex justify-between border-b border-border/10 pb-1.5"><span>Ngày sinh:</span><span id="detail-user-dob" class="text-foreground"></span></div>
                     <div class="flex justify-between border-b border-border/10 pb-1.5"><span>Giới tính:</span><span id="detail-user-gender" class="text-foreground"></span></div>
                     <div class="flex justify-between border-b border-border/10 pb-1.5"><span>Chiều cao:</span><span id="detail-user-height" class="text-foreground"></span></div>
+                </div>
+            </div>
+
+            <!-- Change Plan Section -->
+            <div class="mt-6 border-t border-border/20 pt-6">
+                <h4 class="text-xs font-bold uppercase tracking-wider text-foreground mb-3">Cập nhật gói dịch vụ</h4>
+                <div class="flex items-center gap-3">
+                    <select id="plan-select" class="flex-1 h-10 text-xs rounded-xl border border-border/50 bg-background px-3 font-semibold outline-none focus:border-primary">
+                        <option value="Free">Free</option>
+                        <option value="Pro">Pro</option>
+                        <option value="Premium">Premium</option>
+                    </select>
+                    <button onclick="updateUserPlan()" class="h-10 px-4 rounded-xl gradient-primary text-xs font-bold text-white shadow-glow hover:scale-[1.02] transition-transform">
+                        Lưu gói
+                    </button>
                 </div>
             </div>
 
@@ -1220,6 +1265,10 @@
             planEl.className = 'rounded px-2 py-0.5 text-[9px] font-black uppercase ' + 
                 (user.plan === 'Premium' ? 'bg-purple-500/15 text-purple-400' : (user.plan === 'Pro' ? 'bg-blue-500/15 text-blue-400' : 'bg-slate-500/15 text-slate-400'));
 
+            // Set plan selector to current value
+            const planSelect = document.getElementById('plan-select');
+            if (planSelect) planSelect.value = user.plan || 'Free';
+
             // Block toggler text & class
             const blockBtn = document.getElementById('btn-toggle-block');
             if (user.status === 'active') {
@@ -1290,6 +1339,32 @@
                 console.error('Error:', error);
                 alert('Không thể kết nối đến máy chủ!');
             });
+        }
+
+        function updateUserPlan() {
+            if (!selectedUserId) return;
+            const plan = document.getElementById('plan-select').value;
+            fetch(`/admin/users/${selectedUserId}/update-plan`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                },
+                body: JSON.stringify({ plan: plan })
+            })
+            .then(r => r.json())
+            .then(data => {
+                if (data.success) {
+                    alert(data.message);
+                    const user = users.find(u => u.id === selectedUserId);
+                    if (user) user.plan = plan;
+                    closeUserModal();
+                    location.reload();
+                } else {
+                    alert(data.message || 'Đã xảy ra lỗi!');
+                }
+            })
+            .catch(() => alert('Không thể kết nối đến máy chủ!'));
         }
 
         function deleteUser() {
@@ -1743,25 +1818,31 @@
                             ticks: { color: textColor, font: { family: 'Inter', weight: 600, size: 10 } }
                         },
                         y: {
+                            min: 0,
                             grid: { color: gridColor },
                             ticks: {
                                 color: textColor,
                                 font: { family: 'Inter', weight: 600, size: 10 },
-                                callback: function(value) { return (value / 1000000) + 'M'; }
+                                callback: function(value) {
+                                    if (value === 0) return '0đ';
+                                    if (value >= 1000000) return (value / 1000000).toFixed(1) + 'M';
+                                    if (value >= 1000) return (value / 1000).toFixed(0) + 'K';
+                                    return value + 'đ';
+                                }
                             }
                         }
                     }
                 }
             });
 
-            // 2. Packages Pie Chart
+            // 2. Packages Pie Chart (real data from DB)
             const pieCtx = document.getElementById('packagesPieChart').getContext('2d');
             new Chart(pieCtx, {
                 type: 'doughnut',
                 data: {
                     labels: ['Free', 'Pro', 'Premium'],
                     datasets: [{
-                        data: [84, 45, 28],
+                        data: [{{ $packagesSold['free'] }}, {{ $packagesSold['pro'] }}, {{ $packagesSold['premium'] }}],
                         backgroundColor: ['#64748b', '#3b82f6', '#8b5cf6'],
                         borderWidth: 0
                     }]

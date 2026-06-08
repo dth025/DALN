@@ -11,26 +11,94 @@ class MenuController extends Controller
         $user = auth()->user();
         [$aiSuggestedPlan, $doctorRecommendedPlan] = $this->generateHealthBasedPlans($user);
 
-        $meals = [
-            ['title' => 'Bữa sáng', 'time' => '07:00', 'kcal' => 420, 'name' => 'Yến mạch trái cây & hạt chia', 'img' => 'https://images.unsplash.com/photo-1517673400267-0251440c45dc?w=600&q=80', 'tags' => ['Giàu chất xơ', 'Vegan']],
-            ['title' => 'Bữa trưa', 'time' => '12:30', 'kcal' => 680, 'name' => 'Cơm gạo lứt ức gà nướng & rau củ', 'img' => 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=600&q=80', 'tags' => ['Cao đạm', 'Low-carb']],
-            ['title' => 'Bữa tối', 'time' => '18:30', 'kcal' => 520, 'name' => 'Salad cá hồi avocado', 'img' => 'https://images.unsplash.com/photo-1467003909585-2f8a72700288?w=600&q=80', 'tags' => ['Omega-3', 'Ít calo']],
-            ['title' => 'Bữa phụ', 'time' => '21:00', 'kcal' => 200, 'name' => 'Sữa chua Hy Lạp & việt quất', 'img' => 'https://images.unsplash.com/photo-1488477181946-6428a0291777?w=600&q=80', 'tags' => ['Probiotic']],
-        ];
+        $macros = $this->calculateMacros($user);
 
-        $macros = [
-            ['label' => 'Calories', 'value' => '1,820', 'target' => '2,000', 'color' => 'from-orange-500 to-amber-400', 'width' => '91%'],
-            ['label' => 'Protein', 'value' => '120g', 'target' => '140g', 'color' => 'from-rose-500 to-pink-400', 'width' => '85%'],
-            ['label' => 'Carbs', 'value' => '210g', 'target' => '250g', 'color' => 'from-blue-500 to-cyan-400', 'width' => '84%'],
-            ['label' => 'Fat', 'value' => '55g', 'target' => '65g', 'color' => 'from-emerald-500 to-teal-400', 'width' => '84%'],
-        ];
+        // Derive meal suggestions from the AI plan so there's no hardcoded list
+        $aiMeals = $aiSuggestedPlan['meals'] ?? [];
+        $meals = array_map(function ($m, $i) {
+            $times = ['07:00', '12:30', '18:30', '21:00'];
+            $imgs  = [
+                'https://images.unsplash.com/photo-1517673400267-0251440c45dc?w=600&q=80',
+                'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=600&q=80',
+                'https://images.unsplash.com/photo-1467003909585-2f8a72700288?w=600&q=80',
+                'https://images.unsplash.com/photo-1488477181946-6428a0291777?w=600&q=80',
+            ];
+            return [
+                'title' => $m['label'] ?? ('Bữa ' . ($i + 1)),
+                'time'  => $times[$i] ?? '12:00',
+                'kcal'  => $m['kcal'] ?? 0,
+                'name'  => $m['name'] ?? '',
+                'img'   => $imgs[$i] ?? $imgs[0],
+                'tags'  => [],
+            ];
+        }, $aiMeals, array_keys($aiMeals));
 
         return view('menu', [
             'macros' => $macros,
-            'meals' => $meals,
+            'meals'  => $meals,
             'aiSuggestedPlan' => $aiSuggestedPlan,
             'doctorRecommendedPlan' => $doctorRecommendedPlan,
         ]);
+    }
+
+    private function calculateMacros($user): array
+    {
+        $weight = floatval($user->weight ?: 0);
+        $height = floatval($user->height ?: 0);
+        if ($height > 250) $height /= 10;
+
+        // Harris-Benedict TDEE estimate (moderate activity)
+        $age = $user->dob ? \Carbon\Carbon::parse($user->dob)->age : 25;
+        $gender = strtolower($user->gender ?? 'male');
+        if ($weight > 0 && $height > 0) {
+            if ($gender === 'female' || $gender === 'nữ') {
+                $bmr = 655 + (9.6 * $weight) + (1.8 * $height) - (4.7 * $age);
+            } else {
+                $bmr = 66 + (13.7 * $weight) + (5 * $height) - (6.8 * $age);
+            }
+            $tdee = (int) round($bmr * 1.55);
+        } else {
+            $tdee = 2000;
+        }
+
+        // Adjust by goal
+        $goalText = strtolower($user->health_goals ?? '');
+        if (str_contains($goalText, 'giảm') || ($weight > 0 && $height > 0 && $weight / (($height / 100) ** 2) >= 25)) {
+            $targetCal = (int) round($tdee * 0.85);
+        } elseif (str_contains($goalText, 'tăng') || ($weight > 0 && $height > 0 && $weight / (($height / 100) ** 2) < 18.5)) {
+            $targetCal = (int) round($tdee * 1.10);
+        } else {
+            $targetCal = $tdee;
+        }
+
+        // Actual calories consumed today from HealthMetric (if logged)
+        $todayMetric = \App\Models\HealthMetric::where('user_id', $user->id)
+            ->where('recorded_at', now()->toDateString())
+            ->first();
+        $actualCal = $todayMetric?->calories ?? $user->calories ?? 0;
+
+        // Macro targets (protein 30%, carbs 45%, fat 25%)
+        $proteinTarget = (int) round($targetCal * 0.30 / 4);
+        $carbTarget    = (int) round($targetCal * 0.45 / 4);
+        $fatTarget     = (int) round($targetCal * 0.25 / 9);
+
+        // Estimate actual macros from calories ratio (approximation if no detailed tracking)
+        $calRatio      = $targetCal > 0 ? min(1, $actualCal / $targetCal) : 0;
+        $actualProtein = (int) round($proteinTarget * $calRatio);
+        $actualCarb    = (int) round($carbTarget * $calRatio);
+        $actualFat     = (int) round($fatTarget * $calRatio);
+
+        $calPct     = $targetCal > 0 ? min(100, round($actualCal / $targetCal * 100)) : 0;
+        $proteinPct = $proteinTarget > 0 ? min(100, round($actualProtein / $proteinTarget * 100)) : 0;
+        $carbPct    = $carbTarget > 0 ? min(100, round($actualCarb / $carbTarget * 100)) : 0;
+        $fatPct     = $fatTarget > 0 ? min(100, round($actualFat / $fatTarget * 100)) : 0;
+
+        return [
+            ['label' => 'Calories', 'value' => number_format($actualCal), 'target' => number_format($targetCal), 'color' => 'from-orange-500 to-amber-400', 'width' => $calPct . '%'],
+            ['label' => 'Protein',  'value' => $actualProtein . 'g',      'target' => $proteinTarget . 'g',      'color' => 'from-rose-500 to-pink-400',    'width' => $proteinPct . '%'],
+            ['label' => 'Carbs',    'value' => $actualCarb . 'g',         'target' => $carbTarget . 'g',         'color' => 'from-blue-500 to-cyan-400',    'width' => $carbPct . '%'],
+            ['label' => 'Fat',      'value' => $actualFat . 'g',          'target' => $fatTarget . 'g',          'color' => 'from-emerald-500 to-teal-400', 'width' => $fatPct . '%'],
+        ];
     }
 
     public function aiRecommendation()

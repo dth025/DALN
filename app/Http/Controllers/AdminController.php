@@ -7,6 +7,7 @@ use App\Models\User;
 use App\Models\Appointment;
 use App\Models\HealthMetric;
 use App\Models\Doctor;
+use App\Models\ChatMessage;
 use Illuminate\Support\Facades\Hash;
 
 class AdminController extends Controller
@@ -61,21 +62,37 @@ class AdminController extends Controller
 
         // 1. Lấy dữ liệu tổng quan
         $totalUsers = User::count();
-        $activeToday = User::where('updated_at', '>=', now()->startOfDay())->count();
-        
-        // Mock Doanh thu
-        $totalRevenue = 48250000; // VNĐ
-        $revenueToday = 1450000;
-        
-        // Mock Gói dịch vụ đã bán
+
+        // Người dùng hoạt động hôm nay: có health_metrics, chat hoặc đăng ký mới
+        $activeToday = collect()
+            ->merge(HealthMetric::whereDate('recorded_at', now()->toDateString())->pluck('user_id'))
+            ->merge(ChatMessage::whereDate('created_at', now()->toDateString())->pluck('user_id'))
+            ->merge(User::whereDate('created_at', now()->toDateString())->pluck('id'))
+            ->unique()
+            ->count();
+
+        // Gói dịch vụ đã bán (thực từ DB)
         $packagesSold = [
-            'free' => User::where('plan', 'Free')->count(),
-            'pro' => User::where('plan', 'Pro')->count(),
-            'premium' => User::where('plan', 'Premium')->count()
+            'free'    => User::where('plan', 'Free')->count(),
+            'pro'     => User::where('plan', 'Pro')->count(),
+            'premium' => User::where('plan', 'Premium')->count(),
         ];
-        
-        // Mock AI phân tích
-        $aiAnalysesToday = 142;
+
+        // Giá gói (VNĐ/tháng)
+        $planPrices = ['Free' => 0, 'Pro' => 149000, 'Premium' => 299000];
+
+        // Doanh thu ước tính từ số user có gói trả phí hiện tại
+        $totalRevenue = ($packagesSold['pro'] * $planPrices['Pro'])
+                      + ($packagesSold['premium'] * $planPrices['Premium']);
+
+        // Doanh thu hôm nay: user nâng cấp lên gói trả phí trong ngày hôm nay
+        $revenueToday = User::whereIn('plan', ['Pro', 'Premium'])
+            ->whereDate('updated_at', now()->toDateString())
+            ->get()
+            ->sum(fn($u) => $planPrices[$u->plan] ?? 0);
+
+        // AI phân tích hôm nay: số lượng tin nhắn chatbot hôm nay
+        $aiAnalysesToday = ChatMessage::whereDate('created_at', now()->toDateString())->count();
         
         // 2. Danh sách người dùng từ Database
         $users = User::all();
@@ -194,28 +211,75 @@ class AdminController extends Controller
             ];
         }
 
-        // 5. Giao dịch gần đây (Recent transactions)
-        $recentTransactions = [
-            ['id' => 'TXN-9842', 'name' => 'Nguyễn Văn A', 'plan' => 'Premium', 'amount' => 299000, 'date' => '2026-05-28 14:32', 'status' => 'success'],
-            ['id' => 'TXN-9841', 'name' => 'Trần Thị B', 'plan' => 'Pro', 'amount' => 149000, 'date' => '2026-05-28 09:15', 'status' => 'success'],
-            ['id' => 'TXN-9840', 'name' => 'Phạm Minh D', 'plan' => 'Premium', 'amount' => 299000, 'date' => '2026-05-27 18:40', 'status' => 'success'],
-            ['id' => 'TXN-9839', 'name' => 'Lê Hoàng C', 'plan' => 'Pro', 'amount' => 149000, 'date' => '2026-05-26 11:22', 'status' => 'failed'],
-            ['id' => 'TXN-9838', 'name' => 'Vũ Hải E', 'plan' => 'Pro', 'amount' => 149000, 'date' => '2026-05-25 08:05', 'status' => 'success'],
-        ];
+        // 5. Giao dịch gần đây — user có gói trả phí, sắp xếp theo lần cập nhật gần nhất
+        $recentTransactions = User::whereIn('plan', ['Pro', 'Premium'])
+            ->orderBy('updated_at', 'desc')
+            ->take(10)
+            ->get()
+            ->map(function ($u) use ($planPrices) {
+                return [
+                    'id'     => 'TXN-' . str_pad($u->id, 4, '0', STR_PAD_LEFT),
+                    'name'   => $u->name,
+                    'plan'   => $u->plan,
+                    'amount' => $planPrices[$u->plan] ?? 0,
+                    'date'   => $u->updated_at->format('Y-m-d H:i'),
+                    'status' => 'success',
+                ];
+            })
+            ->toArray();
 
-        // 6. Thống kê biểu đồ doanh thu theo tháng (Chart.js)
-        $monthlyRevenue = [
-            'labels' => ['Tháng 1', 'Tháng 2', 'Tháng 3', 'Tháng 4', 'Tháng 5'],
-            'data' => [12500000, 18200000, 22400000, 31200000, 48250000]
-        ];
+        // 6. Biểu đồ doanh thu 6 tháng gần nhất — ước tính từ user đăng ký có gói trả phí
+        $monthlyRevenue = ['labels' => [], 'data' => []];
+        for ($i = 5; $i >= 0; $i--) {
+            $month = now()->subMonths($i);
+            $monthlyRevenue['labels'][] = 'T' . $month->format('n') . '/' . $month->format('y');
+            $revenue = (int) User::whereIn('plan', ['Pro', 'Premium'])
+                ->whereYear('created_at', $month->year)
+                ->whereMonth('created_at', $month->month)
+                ->get()
+                ->sum(fn($u) => $planPrices[$u->plan] ?? 0);
+            $monthlyRevenue['data'][] = $revenue;
+        }
 
-        // 7. Hoạt động hệ thống gần đây (Activity logs)
-        $activityLogs = [
-            ['time' => '2 phút trước', 'icon' => 'user-plus', 'color' => 'text-primary bg-primary/10', 'text' => 'Người dùng mới Nguyễn Văn An đăng ký tài khoản.'],
-            ['time' => '15 phút trước', 'icon' => 'credit-card', 'color' => 'text-success bg-success/10', 'text' => 'Giao dịch thành công gói Premium từ người dùng Phạm Minh D.'],
-            ['time' => '1 giờ trước', 'icon' => 'message-square', 'color' => 'text-amber-500 bg-amber-500/10', 'text' => 'Phản hồi mới từ Lê Hoàng C về việc hỗ trợ Garmin.'],
-            ['time' => '3 giờ trước', 'icon' => 'alert-triangle', 'color' => 'text-rose-500 bg-rose-500/10', 'text' => 'Hệ thống AI ghi nhận tải lượng CPU cao (>85%).'],
-        ];
+        // 7. Hoạt động hệ thống gần đây — tổng hợp từ các bảng thực
+        $activityEvents = [];
+
+        foreach (User::orderBy('created_at', 'desc')->take(3)->get() as $ru) {
+            $activityEvents[] = [
+                'ts'    => $ru->created_at,
+                'icon'  => 'user-plus',
+                'color' => 'text-primary bg-primary/10',
+                'text'  => "Người dùng mới {$ru->name} đã đăng ký tài khoản.",
+            ];
+        }
+
+        foreach (Appointment::with('patient')->orderBy('created_at', 'desc')->take(3)->get() as $appt) {
+            $patientName = $appt->patient?->name ?? 'Người dùng';
+            $activityEvents[] = [
+                'ts'    => $appt->created_at,
+                'icon'  => 'calendar-check',
+                'color' => 'text-success bg-success/10',
+                'text'  => "{$patientName} đã đặt lịch khám với {$appt->doctor_name}.",
+            ];
+        }
+
+        foreach (\App\Models\Feedback::with('user')->whereNull('parent_id')->orderBy('created_at', 'desc')->take(2)->get() as $fb) {
+            $sender = $fb->user?->name ?? ($fb->guest_name ?? 'Khách');
+            $activityEvents[] = [
+                'ts'    => $fb->created_at,
+                'icon'  => 'message-square',
+                'color' => 'text-amber-500 bg-amber-500/10',
+                'text'  => "{$sender} đã gửi phản hồi mới về hệ thống.",
+            ];
+        }
+
+        usort($activityEvents, fn($a, $b) => $b['ts']->timestamp - $a['ts']->timestamp);
+        $activityLogs = array_map(fn($e) => [
+            'time'  => $e['ts']->diffForHumans(),
+            'icon'  => $e['icon'],
+            'color' => $e['color'],
+            'text'  => $e['text'],
+        ], array_slice($activityEvents, 0, 5));
 
         $doctorsList = Doctor::all()->toArray();
 
@@ -274,6 +338,24 @@ class AdminController extends Controller
             'success' => true,
             'message' => "Đã {$actionText} thành công tài khoản {$user->name}!",
             'status' => $user->status
+        ]);
+    }
+
+    public function updateUserPlan(Request $request, $id)
+    {
+        if (!session()->has('admin_logged_in')) {
+            return response()->json(['success' => false, 'message' => 'Quyền truy cập bị từ chối!'], 403);
+        }
+
+        $request->validate(['plan' => 'required|in:Free,Pro,Premium']);
+        $user = User::findOrFail($id);
+        $user->plan = $request->plan;
+        $user->save();
+
+        return response()->json([
+            'success' => true,
+            'message' => "Đã cập nhật gói {$request->plan} cho tài khoản {$user->name}!",
+            'plan' => $user->plan
         ]);
     }
 
