@@ -3,13 +3,29 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
+use App\Models\Doctor;
 
 class MenuController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
         $user = auth()->user();
         [$aiSuggestedPlan, $doctorRecommendedPlan] = $this->generateHealthBasedPlans($user);
+
+        // Query doctors with index optimization
+        $doctors = Doctor::where('status', 'active')->orderBy('name')->select(['id', 'name', 'specialty', 'avatar', 'place', 'phone', 'status'])->get();
+        
+        $selectedDoctor = null;
+        if ($request->query('selected_doctor')) {
+            $selectedDoctor = $doctors->firstWhere('id', (int) $request->query('selected_doctor'));
+        }
+
+        if ($selectedDoctor) {
+            $doctorRecommendedPlan['doctor'] = $selectedDoctor->name;
+            if (empty($doctorRecommendedPlan['advice'])) {
+                $doctorRecommendedPlan['advice'] = 'Bạn đã chọn bác sĩ ' . $selectedDoctor->name . '. Đề xuất thực đơn sẽ được cập nhật khi bác sĩ gửi phản hồi.';
+            }
+        }
 
         $macros = $this->calculateMacros($user);
 
@@ -38,6 +54,8 @@ class MenuController extends Controller
             'meals'  => $meals,
             'aiSuggestedPlan' => $aiSuggestedPlan,
             'doctorRecommendedPlan' => $doctorRecommendedPlan,
+            'doctors' => $doctors,
+            'selectedDoctor' => $selectedDoctor,
         ]);
     }
 

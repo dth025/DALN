@@ -27,16 +27,54 @@
 
         <form id="bookingForm" method="POST" action="{{ route('appointments.book') }}">
             @csrf
-            <input type="hidden" name="doctor_id" id="booking_doctor_id" />
+            <input type="hidden" name="doctor_id" id="booking_doctor_id" value="{{ old('doctor_id') }}" />
 
-            <div class="mb-3">
-                <label class="block text-xs text-muted-foreground mb-1">Bác sĩ</label>
-                <input type="text" id="booking_doctor_name" class="w-full rounded-lg border px-3 py-2" readonly />
+            <div id="bookingDoctorInfo" class="mb-4 rounded-2xl border border-border bg-slate-50 p-4" style="display: none;">
+                <div class="flex items-center gap-3">
+                    <img id="booking_doctor_avatar" src="https://ui-avatars.com/api/?name=Doctor&background=94a3b8&color=fff" alt="Doctor Avatar" class="h-14 w-14 rounded-2xl object-cover" />
+                    <div class="min-w-0">
+                        <p id="booking_doctor_title" class="text-sm font-semibold text-slate-900">Chưa chọn bác sĩ</p>
+                        <p id="booking_doctor_specialty" class="text-xs text-muted-foreground">Chuyên ngành</p>
+                    </div>
+                </div>
+                <div class="mt-3 grid gap-2 text-sm text-slate-700">
+                    <div id="booking_doctor_place" class="flex items-center gap-2"><i data-lucide="map-pin" class="h-4 w-4"></i><span>Địa điểm</span></div>
+                    <div id="booking_doctor_phone" class="flex items-center gap-2"><i data-lucide="phone" class="h-4 w-4"></i><span>Điện thoại</span></div>
+                </div>
             </div>
 
             <div class="mb-3">
-                <label class="block text-xs text-muted-foreground mb-1">Ngày & giờ</label>
-                <input type="datetime-local" name="appointment_date" id="booking_appointment_date" class="w-full rounded-lg border px-3 py-2" required />
+                <label class="block text-xs text-muted-foreground mb-1">Bác sĩ đã chọn</label>
+                <input type="text" id="booking_doctor_name" class="w-full rounded-lg border px-3 py-2 bg-slate-100 text-sm text-slate-700" readonly placeholder="Chọn bác sĩ từ danh sách bên dưới" value="{{ $selectedDoctor ? $selectedDoctor->name . ' - ' . $selectedDoctor->specialty : '' }}" />
+            </div>
+
+            <div class="mb-3">
+                <label class="block text-xs text-muted-foreground mb-1">Hoặc chọn bác sĩ</label>
+                <select id="booking_doctor_select" class="w-full rounded-lg border px-3 py-2" onchange="syncSelectedDoctor(this)">
+                    <option value="">-- Chọn bác sĩ --</option>
+                    @foreach($doctors as $doctor)
+                        <option value="{{ $doctor->id }}" data-name="{{ $doctor->name }}" data-specialty="{{ $doctor->specialty }}" data-place="{{ $doctor->place }}" data-phone="{{ $doctor->phone }}" data-avatar="{{ $doctor->avatar }}" {{ old('doctor_id') == $doctor->id ? 'selected' : '' }}>{{ $doctor->name }} - {{ $doctor->specialty }}</option>
+                    @endforeach
+                </select>
+                @error('doctor_id')
+                    <p class="mt-1 text-xs text-rose-500">{{ $message }}</p>
+                @enderror
+            </div>
+
+            <div class="mb-3">
+                <label class="block text-xs text-muted-foreground mb-1">Ngày khám</label>
+                <input type="date" name="appointment_date" id="booking_appointment_date" class="w-full rounded-lg border px-3 py-2" value="{{ old('appointment_date') ? \Carbon\Carbon::parse(old('appointment_date'))->toDateString() : '' }}" required />
+                @error('appointment_date')
+                    <p class="mt-1 text-xs text-rose-500">{{ $message }}</p>
+                @enderror
+            </div>
+
+            <div class="mb-3">
+                <label class="block text-xs text-muted-foreground mb-1">Giờ khám</label>
+                <input type="time" name="appointment_time" id="booking_appointment_time" class="w-full rounded-lg border px-3 py-2" value="{{ old('appointment_time') }}" required />
+                @error('appointment_time')
+                    <p class="mt-1 text-xs text-rose-500">{{ $message }}</p>
+                @enderror
             </div>
 
             <div class="flex justify-end gap-2 mt-4">
@@ -74,10 +112,89 @@
 </div>
 
 <script>
-function openBookingModal(doctorId, doctorName) {
-    document.getElementById('booking_doctor_id').value = doctorId || '';
-    document.getElementById('booking_doctor_name').value = doctorName || '';
+function openBookingModal(doctorId, doctorName, specialty, place, phone, avatar) {
+    const hiddenDoctor = document.getElementById('booking_doctor_id');
+    const doctorNameInput = document.getElementById('booking_doctor_name');
+    const doctorSelect = document.getElementById('booking_doctor_select');
+    const doctorInfo = document.getElementById('bookingDoctorInfo');
+    const doctorTitle = document.getElementById('booking_doctor_title');
+    const doctorSpecialty = document.getElementById('booking_doctor_specialty');
+    const doctorPlace = document.getElementById('booking_doctor_place');
+    const doctorPhone = document.getElementById('booking_doctor_phone');
+    const doctorAvatar = document.getElementById('booking_doctor_avatar');
+
+    if (hiddenDoctor) {
+        hiddenDoctor.value = doctorId || '';
+    }
+    if (doctorNameInput) {
+        doctorNameInput.value = doctorName || '';
+    }
+    if (doctorSelect) {
+        doctorSelect.value = doctorId || '';
+    }
+    if (doctorInfo) {
+        doctorInfo.style.display = doctorId ? 'block' : 'none';
+    }
+    if (doctorTitle) {
+        doctorTitle.textContent = doctorName || 'Chưa chọn bác sĩ';
+    }
+    if (doctorSpecialty) {
+        doctorSpecialty.textContent = specialty || 'Chuyên ngành';
+    }
+    if (doctorPlace) {
+        doctorPlace.querySelector('span').textContent = place || 'Địa điểm';
+    }
+    if (doctorPhone) {
+        doctorPhone.querySelector('span').textContent = phone || 'Điện thoại';
+    }
+    if (doctorAvatar && avatar) {
+        doctorAvatar.src = avatar;
+    }
+
     document.getElementById('bookingModal').style.display = 'flex';
+}
+
+function syncSelectedDoctor(select) {
+    const hiddenDoctor = document.getElementById('booking_doctor_id');
+    const doctorNameInput = document.getElementById('booking_doctor_name');
+    const doctorInfo = document.getElementById('bookingDoctorInfo');
+    const doctorTitle = document.getElementById('booking_doctor_title');
+    const doctorSpecialty = document.getElementById('booking_doctor_specialty');
+    const doctorPlace = document.getElementById('booking_doctor_place');
+    const doctorPhone = document.getElementById('booking_doctor_phone');
+    const doctorAvatar = document.getElementById('booking_doctor_avatar');
+
+    const selectedOption = select.options[select.selectedIndex];
+    const selectedText = selectedOption?.text || '';
+    const specialty = selectedOption?.dataset.specialty || '';
+    const place = selectedOption?.dataset.place || '';
+    const phone = selectedOption?.dataset.phone || '';
+    const avatar = selectedOption?.dataset.avatar || '';
+
+    if (hiddenDoctor) {
+        hiddenDoctor.value = select.value;
+    }
+    if (doctorNameInput) {
+        doctorNameInput.value = selectedText;
+    }
+    if (doctorInfo) {
+        doctorInfo.style.display = select.value ? 'block' : 'none';
+    }
+    if (doctorTitle) {
+        doctorTitle.textContent = selectedText || 'Chưa chọn bác sĩ';
+    }
+    if (doctorSpecialty) {
+        doctorSpecialty.textContent = specialty || 'Chuyên ngành';
+    }
+    if (doctorPlace) {
+        doctorPlace.querySelector('span').textContent = place || 'Địa điểm';
+    }
+    if (doctorPhone) {
+        doctorPhone.querySelector('span').textContent = phone || 'Điện thoại';
+    }
+    if (doctorAvatar && avatar) {
+        doctorAvatar.src = avatar;
+    }
 }
 
 function closeBookingModal() {
@@ -101,7 +218,11 @@ document.addEventListener('DOMContentLoaded', function () {
         btn.addEventListener('click', function (e) {
             const id = this.getAttribute('data-doctor-id');
             const name = this.getAttribute('data-doctor-name');
-            openBookingModal(id, name);
+            const specialty = this.getAttribute('data-doctor-specialty');
+            const place = this.getAttribute('data-doctor-place');
+            const phone = this.getAttribute('data-doctor-phone');
+            const avatar = this.getAttribute('data-doctor-avatar');
+            openBookingModal(id, name, specialty, place, phone, avatar);
         });
     });
     document.querySelectorAll('.reschedule-btn').forEach(function (btn) {
@@ -155,7 +276,15 @@ document.addEventListener('DOMContentLoaded', function () {
                     </div>
                     <div class="mt-4 flex items-center justify-between gap-2">
                         <span class="rounded-full bg-emerald-500/10 px-3 py-1 text-[11px] font-semibold text-emerald-400">{{ ucfirst($doctor->status) }}</span>
-                        <button data-doctor-id="{{ $doctor->id }}" data-doctor-name="{{ $doctor->name }}" class="choose-doctor-btn rounded-xl border border-border px-3 py-2 text-xs font-medium hover:bg-accent">Chọn bác sĩ</button>
+                        <button
+                            data-doctor-id="{{ $doctor->id }}"
+                            data-doctor-name="{{ $doctor->name }}"
+                            data-doctor-specialty="{{ $doctor->specialty }}"
+                            data-doctor-place="{{ $doctor->place }}"
+                            data-doctor-phone="{{ $doctor->phone }}"
+                            data-doctor-avatar="{{ $doctor->avatar }}"
+                            class="choose-doctor-btn rounded-xl border border-border px-3 py-2 text-xs font-medium hover:bg-accent"
+                        >Chọn bác sĩ</button>
                     </div>
                 </div>
             @endforeach

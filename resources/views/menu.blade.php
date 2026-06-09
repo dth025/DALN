@@ -81,6 +81,11 @@
                 <p class="text-xs text-muted-foreground">Lời khuyên dinh dưỡng từ chuyên gia sức khỏe.</p>
             </div>
         </div>
+        @if(isset($selectedDoctor) && $selectedDoctor)
+            <div class="mb-4 rounded-3xl border border-emerald-500/20 bg-emerald-500/10 p-4 text-sm text-emerald-700">
+                <strong>Bác sĩ đã chọn:</strong> {{ $selectedDoctor->name }} · {{ $selectedDoctor->specialty }}
+            </div>
+        @endif
         <p id="doctor-plan-description" class="text-sm leading-7 text-foreground/85">{{ $doctorRecommendedPlan['advice'] }}</p>
         <div id="doctor-plan-meals" class="mt-6 space-y-3">
             @foreach($doctorRecommendedPlan['meals'] as $meal)
@@ -95,6 +100,47 @@
             </div>
             @endforeach
         </div>
+    </div>
+</div>
+
+<!-- Choose a Doctor for Recommendation -->
+<div class="glass rounded-3xl p-6 shadow-soft mb-6">
+    <div class="flex items-center justify-between gap-3 mb-4">
+        <div>
+            <h2 class="text-base font-semibold">Chọn bác sĩ đề xuất thực đơn</h2>
+            <p class="text-sm text-muted-foreground">Chọn bác sĩ phù hợp để xem gợi ý chuyên môn.</p>
+        </div>
+        @if(isset($selectedDoctor) && $selectedDoctor)
+            <a href="{{ route('menu') }}" class="rounded-full border border-emerald-500/30 px-4 py-2 text-xs font-semibold text-emerald-500 hover:bg-emerald-500/10">Bỏ chọn</a>
+        @endif
+    </div>
+
+    <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+        @foreach($doctors as $doctor)
+            <div class="rounded-3xl border border-border bg-card p-4 shadow-soft">
+                <div class="flex items-center gap-3">
+                    <img src="{{ $doctor->avatar }}" alt="{{ $doctor->name }}" class="h-12 w-12 rounded-2xl object-cover ring-2 ring-border" />
+                    <div class="min-w-0">
+                        <h4 class="text-sm font-semibold truncate">{{ $doctor->name }}</h4>
+                        <p class="text-xs text-muted-foreground truncate">{{ $doctor->specialty }}</p>
+                    </div>
+                </div>
+                <div class="mt-4 text-xs text-muted-foreground space-y-2">
+                    <div class="flex items-center gap-2">
+                        <i data-lucide="map-pin" class="h-3.5 w-3.5"></i>
+                        <span>{{ $doctor->place }}</span>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <i data-lucide="phone" class="h-3.5 w-3.5"></i>
+                        <span>{{ $doctor->phone }}</span>
+                    </div>
+                </div>
+                <div class="mt-4 flex items-center justify-between gap-2">
+                    <span class="rounded-full bg-emerald-500/10 px-3 py-1 text-[11px] font-semibold text-emerald-400">{{ ucfirst($doctor->status) }}</span>
+                    <a href="{{ route('menu', ['selected_doctor' => $doctor->id]) }}" class="rounded-xl border border-border px-3 py-2 text-xs font-medium hover:bg-accent">Chọn bác sĩ</a>
+                </div>
+            </div>
+        @endforeach
     </div>
 </div>
 

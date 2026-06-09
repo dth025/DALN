@@ -25,6 +25,11 @@ return new class extends Migration
             $table->json('days')->nullable(); // structured daily meals
             $table->timestamps();
 
+            // Add foreign keys
+            $table->foreign('doctor_id')->references('id')->on('doctors')->onDelete('set null');
+            $table->foreign('patient_id')->references('id')->on('users')->onDelete('set null');
+            
+            // Keep indexes
             $table->index(['doctor_id']);
             $table->index(['patient_id']);
         });

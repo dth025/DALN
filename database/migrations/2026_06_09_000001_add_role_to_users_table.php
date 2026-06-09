@@ -12,11 +12,14 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('users', function (Blueprint $table) {
+            if (!Schema::hasColumn('users', 'role')) {
+                $table->enum('role', ['user', 'doctor', 'admin'])->default('user')->after('password');
+            }
             if (!Schema::hasColumn('users', 'plan')) {
-                $table->string('plan')->default('Free')->after('email');
+                $table->string('plan')->default('Free')->after('role');
             }
             if (!Schema::hasColumn('users', 'status')) {
-                $table->string('status')->default('active')->after('plan');
+                $table->enum('status', ['active', 'inactive', 'blocked'])->default('active')->after('plan');
             }
         });
     }
@@ -27,6 +30,9 @@ return new class extends Migration
     public function down(): void
     {
         Schema::table('users', function (Blueprint $table) {
+            if (Schema::hasColumn('users', 'role')) {
+                $table->dropColumn('role');
+            }
             if (Schema::hasColumn('users', 'plan')) {
                 $table->dropColumn('plan');
             }

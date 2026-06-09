@@ -8,18 +8,29 @@ use App\Models\Appointment;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Cache;
 use App\Models\Notification as AppNotification;
 
 class AppointmentController extends Controller
 {
     public function index()
     {
-        $doctors = Doctor::where('status', 'active')->orderBy('name')->get();
+        // Query doctors with index optimization - no caching needed with optimized indexes
+        $doctors = Doctor::where('status', 'active')->orderBy('name')->select(['id', 'name', 'specialty', 'avatar', 'place', 'phone', 'status', 'email'])->get();
+        
         $upcomingAppointments = Appointment::where('user_id', auth()->id())
+            ->with('doctor:id,name,avatar,specialty,place')
             ->orderBy('appointment_date', 'asc')
             ->get();
 
-        return view('appointments', compact('doctors', 'upcomingAppointments'));
+        // Find selected doctor from old form data to avoid serialize issues
+        $selectedDoctor = null;
+        $oldDoctorId = old('doctor_id');
+        if ($oldDoctorId && $doctors) {
+            $selectedDoctor = $doctors->firstWhere('id', (int) $oldDoctorId);
+        }
+
+        return view('appointments', compact('doctors', 'upcomingAppointments', 'selectedDoctor'));
     }
 
     public function store(Request $request)
@@ -27,11 +38,12 @@ class AppointmentController extends Controller
         $request->validate([
             'doctor_id' => 'required|exists:doctors,id',
             'appointment_date' => 'required|date',
+            'appointment_time' => 'required|date_format:H:i',
         ]);
 
         $doctor = Doctor::findOrFail($request->doctor_id);
 
-        $appointmentDate = Carbon::parse($request->appointment_date);
+        $appointmentDate = Carbon::parse($request->appointment_date . ' ' . $request->appointment_time);
 
         // Check for conflict: exact same datetime for the doctor
         $conflict = Appointment::where('doctor_id', $doctor->id)
