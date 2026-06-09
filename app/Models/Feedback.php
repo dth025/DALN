@@ -10,6 +10,12 @@ class Feedback extends Model
 {
     protected $table = 'feedbacks';
 
+    /**
+     * Always eager-load the related user and replies' users to avoid lazy-loading
+     * violations when lazy loading is disabled in the app configuration.
+     */
+    protected $with = ['user', 'replies.user'];
+
     protected $fillable = [
         'user_id',
         'guest_name',
