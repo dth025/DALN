@@ -909,6 +909,9 @@
                                         } elseif($appt->status === 'canceled') {
                                             $statusClass = 'bg-rose-500/10 text-rose-400';
                                             $statusText = 'Đã hủy';
+                                        } elseif($appt->status === 'rescheduled_pending') {
+                                            $statusClass = 'bg-indigo-500/10 text-indigo-400 border border-indigo-500/20';
+                                            $statusText = 'Đề xuất lịch mới';
                                         }
                                     @endphp
                                     <tr class="hover:bg-slate-800/20 transition-colors">
@@ -923,8 +926,22 @@
                                             </div>
                                         </td>
                                         <td class="p-4 text-slate-300">{{ $appt->specialty }}</td>
-                                        <td class="p-4 text-slate-400">{{ \Carbon\Carbon::parse($appt->appointment_date)->format('Y-m-d') }}</td>
-                                        <td class="p-4 text-white font-bold">{{ \Carbon\Carbon::parse($appt->appointment_date)->format('H:i') }}</td>
+                                        <td class="p-4 text-slate-400">
+                                            @if($appt->status === 'rescheduled_pending' && $appt->proposed_date)
+                                                <span class="line-through text-slate-500">{{ \Carbon\Carbon::parse($appt->appointment_date)->format('Y-m-d') }}</span>
+                                                <span class="block text-indigo-400">-> {{ \Carbon\Carbon::parse($appt->proposed_date)->format('Y-m-d') }}</span>
+                                            @else
+                                                {{ \Carbon\Carbon::parse($appt->appointment_date)->format('Y-m-d') }}
+                                            @endif
+                                        </td>
+                                        <td class="p-4 text-white font-bold">
+                                            @if($appt->status === 'rescheduled_pending' && $appt->proposed_date)
+                                                <span class="line-through text-slate-500">{{ \Carbon\Carbon::parse($appt->appointment_date)->format('H:i') }}</span>
+                                                <span class="block text-indigo-400">-> {{ \Carbon\Carbon::parse($appt->proposed_date)->format('H:i') }}</span>
+                                            @else
+                                                {{ \Carbon\Carbon::parse($appt->appointment_date)->format('H:i') }}
+                                            @endif
+                                        </td>
                                         <td class="p-4 text-center">
                                             <span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-bold {{ $statusClass }}">
                                                 {{ $statusText }}
@@ -934,12 +951,14 @@
                                             <div class="inline-flex gap-2">
                                                 @if($appt->status === 'scheduled')
                                                 <button onclick="toggleAppointment({{ $appt->id }}, 'completed')" class="h-8 px-2.5 rounded-lg border border-emerald-500/30 bg-emerald-500/5 hover:bg-emerald-500 text-emerald-400 hover:text-white transition-all text-[10px]">Hoàn thành</button>
-                                                <button onclick="toggleAppointment({{ $appt->id }}, 'canceled')" class="h-8 px-2.5 rounded-lg border border-rose-500/30 bg-rose-500/5 hover:bg-rose-500 text-rose-400 hover:text-white transition-all text-[10px]">Hủy lịch</button>
+                                                <button onclick="openRescheduleModal({{ $appt->id }}, '{{ addslashes($appt->patient->name) }}')" class="h-8 px-2.5 rounded-lg border border-rose-500/30 bg-rose-500/5 hover:bg-rose-500 text-rose-400 hover:text-white transition-all text-[10px]">Hủy lịch</button>
+                                                @elseif($appt->status === 'rescheduled_pending')
+                                                <span class="text-[10px] text-indigo-400 italic font-medium">Chờ bệnh nhân xác nhận</span>
                                                 @else
                                                 <span class="text-xs text-slate-500 italic font-normal">Đã xử lý</span>
                                                 @endif
                                             </div>
-                                        </td>
+                                         </td>
                                     </tr>
                                     @empty
                                     <tr>
@@ -1060,6 +1079,50 @@
     </div>
 
     <!-- ================= MODALS & POPUPS ================= -->
+
+    <!-- Doctor Reschedule & Cancel Modal -->
+    <div id="doctorRescheduleModal" style="display:none;" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm transition-opacity">
+        <div class="relative w-full max-w-md rounded-2xl bg-slate-900 border border-slate-800 p-6 shadow-glow text-slate-200">
+            <button onclick="closeDoctorRescheduleModal()" class="absolute right-4 top-4 text-slate-400 hover:text-white transition-colors">✕</button>
+            <h3 class="text-lg font-bold mb-4 text-white">Hủy hoặc Đổi lịch hẹn</h3>
+
+            <form id="doctorRescheduleForm" onsubmit="event.preventDefault(); submitDoctorReschedule();">
+                <input type="hidden" id="resch_appt_id" />
+                <div class="mb-4">
+                    <p class="text-xs text-slate-400">Bệnh nhân:</p>
+                    <p id="resch_patient_name" class="text-sm font-bold text-white mt-0.5"></p>
+                </div>
+
+                <div class="mb-4">
+                    <label class="block text-xs text-slate-400 mb-1">Phương thức xử lý</label>
+                    <div class="grid grid-cols-2 gap-3">
+                        <label class="flex flex-col items-center justify-center p-3 rounded-xl border border-slate-700 bg-slate-800/40 hover:bg-slate-850 cursor-pointer transition-colors relative" id="opt_label_cancel">
+                            <input type="radio" name="resch_action" value="cancel" class="sr-only" checked onclick="toggleReschMode('cancel')">
+                            <i data-lucide="calendar-x" class="h-5 w-5 text-rose-400 mb-1"></i>
+                            <span class="text-xs font-bold text-white">Chỉ Hủy Lịch</span>
+                        </label>
+                        <label class="flex flex-col items-center justify-center p-3 rounded-xl border border-slate-700 bg-slate-800/40 hover:bg-slate-850 cursor-pointer transition-colors relative" id="opt_label_resched">
+                            <input type="radio" name="resch_action" value="reschedule" class="sr-only" onclick="toggleReschMode('reschedule')">
+                            <i data-lucide="calendar-range" class="h-5 w-5 text-indigo-400 mb-1"></i>
+                            <span class="text-xs font-bold text-white">Hẹn Lịch Mới</span>
+                        </label>
+                    </div>
+                </div>
+
+                <!-- Reschedule Date Input -->
+                <div id="resch_date_container" class="mb-4 hidden">
+                    <label class="block text-xs text-slate-400 mb-1">Chọn Ngày & Giờ Mới</label>
+                    <input type="datetime-local" id="resch_proposed_date" class="w-full rounded-xl border border-slate-700 bg-slate-850 text-white px-3 py-2 text-sm outline-none focus:border-sky-500" />
+                    <p class="text-[10px] text-slate-500 mt-1">Hệ thống sẽ gửi đề xuất để bệnh nhân xác nhận lịch khám mới này.</p>
+                </div>
+
+                <div class="flex justify-end gap-2 mt-6">
+                    <button type="button" onclick="closeDoctorRescheduleModal()" class="rounded-xl border border-slate-700 hover:bg-slate-800 text-slate-300 px-4 py-2 text-xs font-medium transition-colors">Hủy bỏ</button>
+                    <button type="submit" class="rounded-xl bg-sky-600 hover:bg-sky-500 text-white px-4 py-2 text-xs font-bold transition-colors shadow-glow" id="resch_submit_btn">Xác nhận Hủy</button>
+                </div>
+            </form>
+        </div>
+    </div>
     
     <!-- Video Call Mock Modal -->
     <div id="videoCallModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/90 backdrop-blur-md opacity-0 pointer-events-none transition-all duration-300">
@@ -1650,6 +1713,82 @@
             .catch(err => {
                 console.error(err);
                 alert('Không thể kết nối máy chủ!');
+            });
+        }
+
+        function openRescheduleModal(apptId, patientName) {
+            document.getElementById('resch_appt_id').value = apptId;
+            document.getElementById('resch_patient_name').innerText = patientName;
+            document.getElementById('resch_proposed_date').value = '';
+            
+            // reset mode to cancel
+            document.querySelector('input[name="resch_action"][value="cancel"]').checked = true;
+            toggleReschMode('cancel');
+            
+            document.getElementById('doctorRescheduleModal').style.display = 'flex';
+        }
+
+        function closeDoctorRescheduleModal() {
+            document.getElementById('doctorRescheduleModal').style.display = 'none';
+        }
+
+        function toggleReschMode(mode) {
+            const dateContainer = document.getElementById('resch_date_container');
+            const submitBtn = document.getElementById('resch_submit_btn');
+            const labelCancel = document.getElementById('opt_label_cancel');
+            const labelResched = document.getElementById('opt_label_resched');
+            
+            if (mode === 'reschedule') {
+                dateContainer.classList.remove('hidden');
+                submitBtn.innerText = 'Gửi Đề Xuất Hẹn Lại';
+                submitBtn.className = 'rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white px-4 py-2 text-xs font-bold transition-colors shadow-glow cursor-pointer';
+                labelResched.classList.add('border-indigo-500', 'bg-indigo-500/10');
+                labelCancel.classList.remove('border-rose-500', 'bg-rose-500/10');
+            } else {
+                dateContainer.classList.add('hidden');
+                submitBtn.innerText = 'Xác Nhận Hủy Lịch';
+                submitBtn.className = 'rounded-xl bg-rose-600 hover:bg-rose-500 text-white px-4 py-2 text-xs font-bold transition-colors shadow-glow cursor-pointer';
+                labelCancel.classList.add('border-rose-500', 'bg-rose-500/10');
+                labelResched.classList.remove('border-indigo-500', 'bg-indigo-500/10');
+            }
+        }
+
+        function submitDoctorReschedule() {
+            const apptId = document.getElementById('resch_appt_id').value;
+            const action = document.querySelector('input[name="resch_action"]:checked').value;
+            const proposedDate = document.getElementById('resch_proposed_date').value;
+
+            if (action === 'reschedule' && !proposedDate) {
+                alert('Vui lòng chọn ngày giờ hẹn mới!');
+                return;
+            }
+
+            const payload = {
+                status: action === 'reschedule' ? 'rescheduled_pending' : 'canceled',
+                proposed_date: action === 'reschedule' ? proposedDate : null
+            };
+
+            fetch(`/doctor/appointments/${apptId}/status`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json',
+                    'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                },
+                body: JSON.stringify(payload)
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.success) {
+                    alert(data.message);
+                    location.reload();
+                } else {
+                    alert(data.message || 'Lỗi xử lý!');
+                }
+            })
+            .catch(err => {
+                console.error(err);
+                alert('Lỗi kết nối máy chủ!');
             });
         }
 

@@ -20,40 +20,40 @@
 </div>
 
 <!-- Booking Modal -->
-<div id="bookingModal" style="display:none;" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50">
-    <div class="relative w-full max-w-md rounded-2xl bg-white p-6 shadow-lg">
-        <button onclick="closeBookingModal()" class="absolute right-3 top-3 text-muted-foreground">✕</button>
-        <h3 class="text-lg font-semibold mb-4">Đặt lịch khám</h3>
+<div id="bookingModal" style="display:none;" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm transition-opacity">
+    <div class="relative w-full max-w-md rounded-2xl bg-card border border-border p-6 shadow-elevated text-foreground">
+        <button onclick="closeBookingModal()" class="absolute right-4 top-4 text-muted-foreground hover:text-foreground transition-colors">✕</button>
+        <h3 class="text-lg font-bold mb-4 font-display">Đặt lịch khám</h3>
 
         <form id="bookingForm" method="POST" action="{{ route('appointments.book') }}">
             @csrf
             <input type="hidden" name="doctor_id" id="booking_doctor_id" value="{{ old('doctor_id') }}" />
 
-            <div id="bookingDoctorInfo" class="mb-4 rounded-2xl border border-border bg-slate-50 p-4" style="display: none;">
+            <div id="bookingDoctorInfo" class="mb-4 rounded-2xl border border-border bg-muted/40 p-4" style="display: none;">
                 <div class="flex items-center gap-3">
-                    <img id="booking_doctor_avatar" src="https://ui-avatars.com/api/?name=Doctor&background=94a3b8&color=fff" alt="Doctor Avatar" class="h-14 w-14 rounded-2xl object-cover" />
+                    <img id="booking_doctor_avatar" src="https://ui-avatars.com/api/?name=Doctor&background=94a3b8&color=fff" alt="Doctor Avatar" class="h-14 w-14 rounded-2xl object-cover ring-2 ring-border" />
                     <div class="min-w-0">
-                        <p id="booking_doctor_title" class="text-sm font-semibold text-slate-900">Chưa chọn bác sĩ</p>
+                        <p id="booking_doctor_title" class="text-sm font-semibold text-foreground">Chưa chọn bác sĩ</p>
                         <p id="booking_doctor_specialty" class="text-xs text-muted-foreground">Chuyên ngành</p>
                     </div>
                 </div>
-                <div class="mt-3 grid gap-2 text-sm text-slate-700">
-                    <div id="booking_doctor_place" class="flex items-center gap-2"><i data-lucide="map-pin" class="h-4 w-4"></i><span>Địa điểm</span></div>
-                    <div id="booking_doctor_phone" class="flex items-center gap-2"><i data-lucide="phone" class="h-4 w-4"></i><span>Điện thoại</span></div>
+                <div class="mt-3 grid gap-2 text-xs text-muted-foreground">
+                    <div id="booking_doctor_place" class="flex items-center gap-2"><i data-lucide="map-pin" class="h-4 w-4 text-primary"></i><span>Địa điểm</span></div>
+                    <div id="booking_doctor_phone" class="flex items-center gap-2"><i data-lucide="phone" class="h-4 w-4 text-primary"></i><span>Điện thoại</span></div>
                 </div>
             </div>
 
             <div class="mb-3">
                 <label class="block text-xs text-muted-foreground mb-1">Bác sĩ đã chọn</label>
-                <input type="text" id="booking_doctor_name" class="w-full rounded-lg border px-3 py-2 bg-slate-100 text-sm text-slate-700" readonly placeholder="Chọn bác sĩ từ danh sách bên dưới" value="{{ $selectedDoctor ? $selectedDoctor->name . ' - ' . $selectedDoctor->specialty : '' }}" />
+                <input type="text" id="booking_doctor_name" class="w-full rounded-xl border border-border px-3 py-2 bg-muted/20 text-sm text-foreground outline-none cursor-not-allowed" readonly placeholder="Chọn bác sĩ từ danh sách bên dưới" value="{{ $selectedDoctor ? $selectedDoctor->name . ' - ' . $selectedDoctor->specialty : '' }}" />
             </div>
 
             <div class="mb-3">
                 <label class="block text-xs text-muted-foreground mb-1">Hoặc chọn bác sĩ</label>
-                <select id="booking_doctor_select" class="w-full rounded-lg border px-3 py-2" onchange="syncSelectedDoctor(this)">
-                    <option value="">-- Chọn bác sĩ --</option>
+                <select id="booking_doctor_select" class="w-full rounded-xl border border-border bg-card text-foreground px-3 py-2 text-sm outline-none focus:border-primary/40 focus:ring-4 focus:ring-primary/10 transition-all" onchange="syncSelectedDoctor(this)">
+                    <option value="" class="bg-card text-foreground">-- Chọn bác sĩ --</option>
                     @foreach($doctors as $doctor)
-                        <option value="{{ $doctor->id }}" data-name="{{ $doctor->name }}" data-specialty="{{ $doctor->specialty }}" data-place="{{ $doctor->place }}" data-phone="{{ $doctor->phone }}" data-avatar="{{ $doctor->avatar }}" {{ old('doctor_id') == $doctor->id ? 'selected' : '' }}>{{ $doctor->name }} - {{ $doctor->specialty }}</option>
+                        <option value="{{ $doctor->id }}" data-name="{{ $doctor->name }}" data-specialty="{{ $doctor->specialty }}" data-place="{{ $doctor->place }}" data-phone="{{ $doctor->phone }}" data-avatar="{{ $doctor->avatar }}" {{ old('doctor_id') == $doctor->id ? 'selected' : '' }} class="bg-card text-foreground">{{ $doctor->name }} - {{ $doctor->specialty }}</option>
                     @endforeach
                 </select>
                 @error('doctor_id')
@@ -63,49 +63,49 @@
 
             <div class="mb-3">
                 <label class="block text-xs text-muted-foreground mb-1">Ngày khám</label>
-                <input type="date" name="appointment_date" id="booking_appointment_date" class="w-full rounded-lg border px-3 py-2" value="{{ old('appointment_date') ? \Carbon\Carbon::parse(old('appointment_date'))->toDateString() : '' }}" required />
+                <input type="date" name="appointment_date" id="booking_appointment_date" class="w-full rounded-xl border border-border bg-card text-foreground px-3 py-2 text-sm outline-none focus:border-primary/40 focus:ring-4 focus:ring-primary/10 transition-all" value="{{ old('appointment_date') ? \Carbon\Carbon::parse(old('appointment_date'))->toDateString() : '' }}" required />
                 @error('appointment_date')
                     <p class="mt-1 text-xs text-rose-500">{{ $message }}</p>
                 @enderror
             </div>
 
-            <div class="mb-3">
+            <div class="mb-4">
                 <label class="block text-xs text-muted-foreground mb-1">Giờ khám</label>
-                <input type="time" name="appointment_time" id="booking_appointment_time" class="w-full rounded-lg border px-3 py-2" value="{{ old('appointment_time') }}" required />
+                <input type="time" name="appointment_time" id="booking_appointment_time" class="w-full rounded-xl border border-border bg-card text-foreground px-3 py-2 text-sm outline-none focus:border-primary/40 focus:ring-4 focus:ring-primary/10 transition-all" value="{{ old('appointment_time') }}" required />
                 @error('appointment_time')
                     <p class="mt-1 text-xs text-rose-500">{{ $message }}</p>
                 @enderror
             </div>
 
-            <div class="flex justify-end gap-2 mt-4">
-                <button type="button" onclick="closeBookingModal()" class="rounded-lg border px-4 py-2">Hủy</button>
-                <button type="submit" class="rounded-lg gradient-primary px-4 py-2 text-white">Xác nhận</button>
+            <div class="flex justify-end gap-2 mt-6">
+                <button type="button" onclick="closeBookingModal()" class="rounded-xl border border-border bg-card hover:bg-muted/50 text-foreground px-4 py-2 text-sm font-medium transition-colors">Hủy</button>
+                <button type="submit" class="rounded-xl gradient-primary px-4 py-2 text-sm font-bold text-white shadow-glow hover:scale-[1.02] transition-transform">Xác nhận</button>
             </div>
         </form>
     </div>
 </div>
 
 <!-- Reschedule Modal -->
-<div id="rescheduleModal" style="display:none;" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50">
-    <div class="relative w-full max-w-md rounded-2xl bg-white p-6 shadow-lg">
-        <button onclick="closeRescheduleModal()" class="absolute right-3 top-3 text-muted-foreground">✕</button>
-        <h3 class="text-lg font-semibold mb-4">Đổi lịch khám</h3>
+<div id="rescheduleModal" style="display:none;" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm transition-opacity">
+    <div class="relative w-full max-w-md rounded-2xl bg-card border border-border p-6 shadow-elevated text-foreground">
+        <button onclick="closeRescheduleModal()" class="absolute right-4 top-4 text-muted-foreground hover:text-foreground transition-colors">✕</button>
+        <h3 class="text-lg font-bold mb-4 font-display">Đổi lịch khám</h3>
 
         <form id="rescheduleForm" method="POST" action="">
             @csrf
             <div class="mb-3">
                 <label class="block text-xs text-muted-foreground mb-1">Bác sĩ</label>
-                <input type="text" id="reschedule_doctor_name" class="w-full rounded-lg border px-3 py-2" readonly />
+                <input type="text" id="reschedule_doctor_name" class="w-full rounded-xl border border-border px-3 py-2 bg-muted/20 text-sm text-foreground outline-none cursor-not-allowed" readonly />
             </div>
 
-            <div class="mb-3">
+            <div class="mb-4">
                 <label class="block text-xs text-muted-foreground mb-1">Ngày & giờ mới</label>
-                <input type="datetime-local" name="appointment_date" id="reschedule_appointment_date" class="w-full rounded-lg border px-3 py-2" required />
+                <input type="datetime-local" name="appointment_date" id="reschedule_appointment_date" class="w-full rounded-xl border border-border bg-card text-foreground px-3 py-2 text-sm outline-none focus:border-primary/40 focus:ring-4 focus:ring-primary/10 transition-all" required />
             </div>
 
-            <div class="flex justify-end gap-2 mt-4">
-                <button type="button" onclick="closeRescheduleModal()" class="rounded-lg border px-4 py-2">Hủy</button>
-                <button type="submit" class="rounded-lg gradient-primary px-4 py-2 text-white">Lưu thay đổi</button>
+            <div class="flex justify-end gap-2 mt-6">
+                <button type="button" onclick="closeRescheduleModal()" class="rounded-xl border border-border bg-card hover:bg-muted/50 text-foreground px-4 py-2 text-sm font-medium transition-colors">Hủy</button>
+                <button type="submit" class="rounded-xl gradient-primary px-4 py-2 text-sm font-bold text-white shadow-glow hover:scale-[1.02] transition-transform">Lưu thay đổi</button>
             </div>
         </form>
     </div>
@@ -352,26 +352,59 @@ document.addEventListener('DOMContentLoaded', function () {
                     </div>
                 </div>
 
-                <div class="grid grid-cols-2 gap-3 text-xs md:flex md:items-center md:gap-5">
-                    <div class="flex items-center gap-1.5 text-muted-foreground">
-                        <i data-lucide="calendar-days" class="h-3.5 w-3.5"></i> {{ \Carbon\Carbon::parse($appointment->appointment_date)->translatedFormat('d M, Y') }}
+                @if($appointment->status === 'rescheduled_pending')
+                    <div class="flex flex-col gap-1 flex-1 min-w-[200px] border border-indigo-500/20 bg-indigo-500/5 p-3 rounded-xl">
+                        <p class="text-xs text-indigo-400 font-bold flex items-center gap-1">
+                            <i data-lucide="info" class="h-3.5 w-3.5"></i> Bác sĩ đề xuất lịch khám mới
+                        </p>
+                        <div class="grid grid-cols-2 gap-2 text-xs mt-1 text-foreground">
+                            <div class="flex items-center gap-1.5 font-semibold">
+                                <i data-lucide="calendar" class="h-3.5 w-3.5 text-indigo-400"></i>
+                                {{ \Carbon\Carbon::parse($appointment->proposed_date)->translatedFormat('d M, Y') }}
+                            </div>
+                            <div class="flex items-center gap-1.5 font-bold">
+                                <i data-lucide="clock" class="h-3.5 w-3.5 text-indigo-400"></i>
+                                {{ \Carbon\Carbon::parse($appointment->proposed_date)->format('H:i') }}
+                            </div>
+                        </div>
                     </div>
-                    <div class="flex items-center gap-1.5 text-muted-foreground">
-                        <i data-lucide="clock" class="h-3.5 w-3.5"></i> {{ \Carbon\Carbon::parse($appointment->appointment_date)->format('H:i') }}
+                @else
+                    <div class="grid grid-cols-2 gap-3 text-xs md:flex md:items-center md:gap-5">
+                        <div class="flex items-center gap-1.5 text-muted-foreground">
+                            <i data-lucide="calendar-days" class="h-3.5 w-3.5"></i> {{ \Carbon\Carbon::parse($appointment->appointment_date)->translatedFormat('d M, Y') }}
+                        </div>
+                        <div class="flex items-center gap-1.5 text-muted-foreground">
+                            <i data-lucide="clock" class="h-3.5 w-3.5"></i> {{ \Carbon\Carbon::parse($appointment->appointment_date)->format('H:i') }}
+                        </div>
+                        <div class="flex items-center gap-1.5 text-muted-foreground">
+                            <i data-lucide="map-pin" class="h-3.5 w-3.5"></i>
+                            {{ $appointment->doctor->place ?? 'Địa điểm chưa xác định' }}
+                        </div>
                     </div>
-                    <div class="flex items-center gap-1.5 text-muted-foreground">
-                        <i data-lucide="map-pin" class="h-3.5 w-3.5"></i>
-                        {{ $appointment->doctor->place ?? 'Địa điểm chưa xác định' }}
-                    </div>
-                </div>
+                @endif
 
                 <div class="flex gap-2">
-                    <button type="button" data-appointment-id="{{ $appointment->id }}" data-doctor-name="{{ $appointment->doctor_name }}" data-appointment-date="{{ \Carbon\Carbon::parse($appointment->appointment_date)->format('Y-m-d\TH:i') }}" class="reschedule-btn rounded-lg border border-border px-3 py-1.5 text-xs font-medium hover:bg-accent">
-                        Đổi lịch
-                    </button>
-                    <button class="rounded-lg gradient-primary px-3 py-1.5 text-xs font-semibold text-primary-foreground shadow-soft">
-                        Tham gia
-                    </button>
+                    @if($appointment->status === 'rescheduled_pending')
+                        <form method="POST" action="{{ route('appointments.acceptReschedule', $appointment->id) }}">
+                            @csrf
+                            <button type="submit" class="rounded-lg gradient-primary px-3 py-1.5 text-xs font-semibold text-primary-foreground shadow-soft hover:scale-[1.02] transition-transform">
+                                Đồng ý
+                            </button>
+                        </form>
+                        <form method="POST" action="{{ route('appointments.declineReschedule', $appointment->id) }}">
+                            @csrf
+                            <button type="submit" class="rounded-lg border border-rose-500/30 bg-rose-500/5 hover:bg-rose-500 hover:text-white text-rose-400 px-3 py-1.5 text-xs font-medium transition-all">
+                                Từ chối
+                            </button>
+                        </form>
+                    @else
+                        <button type="button" data-appointment-id="{{ $appointment->id }}" data-doctor-name="{{ $appointment->doctor_name }}" data-appointment-date="{{ \Carbon\Carbon::parse($appointment->appointment_date)->format('Y-m-d\TH:i') }}" class="reschedule-btn rounded-lg border border-border px-3 py-1.5 text-xs font-medium hover:bg-accent">
+                            Đổi lịch
+                        </button>
+                        <button class="rounded-lg gradient-primary px-3 py-1.5 text-xs font-semibold text-primary-foreground shadow-soft">
+                            Tham gia
+                        </button>
+                    @endif
                 </div>
             </div>
         @endforeach

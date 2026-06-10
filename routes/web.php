@@ -70,6 +70,8 @@ Route::middleware('auth')->group(function () {
     Route::get('/appointments', [AppointmentController::class, 'index'])->name('appointments');
     Route::post('/appointments/book', [AppointmentController::class, 'store'])->name('appointments.book');
     Route::post('/appointments/{id}/reschedule', [AppointmentController::class, 'reschedule'])->name('appointments.reschedule');
+    Route::post('/appointments/{id}/accept-reschedule', [AppointmentController::class, 'acceptReschedule'])->name('appointments.acceptReschedule');
+    Route::post('/appointments/{id}/decline-reschedule', [AppointmentController::class, 'declineReschedule'])->name('appointments.declineReschedule');
     Route::get('/pricing', [PricingController::class, 'index'])->name('pricing');
     Route::get('/chatbot', [ChatbotController::class, 'index'])->name('chatbot');
     Route::post('/chatbot/send', [ChatbotController::class, 'send'])->name('chatbot.send');

@@ -346,16 +346,45 @@ class DoctorController extends Controller
         }
 
         $request->validate([
-            'status' => 'required|in:scheduled,completed,canceled'
+            'status' => 'required|in:scheduled,completed,canceled,rescheduled_pending',
+            'proposed_date' => 'nullable'
         ]);
 
         $appointment = Appointment::findOrFail($id);
-        $appointment->status = $request->status;
+        
+        $status = $request->status;
+        $proposedDate = $request->proposed_date;
+
+        if (($status === 'canceled' || $status === 'rescheduled_pending') && !empty($proposedDate)) {
+            $appointment->status = 'rescheduled_pending';
+            $appointment->proposed_date = \Carbon\Carbon::parse($proposedDate);
+            $appointment->save();
+
+            \App\Models\Notification::create([
+                'user_id' => $appointment->user_id,
+                'type' => 'appointment_status',
+                'title' => 'Bác sĩ đề xuất đổi lịch khám',
+                'message' => "Bác sĩ {$appointment->doctor_name} đề xuất đổi lịch khám sang " . \Carbon\Carbon::parse($proposedDate)->format('H:i d/m/Y') . ". Vui lòng xác nhận.",
+                'link' => '/appointments',
+                'is_read' => false,
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'message' => "Đã gửi đề xuất lịch khám mới đến bệnh nhân!"
+            ]);
+        }
+
+        $appointment->status = $status;
+        if ($status !== 'rescheduled_pending') {
+            $appointment->proposed_date = null;
+        }
         $appointment->save();
 
         $statusText = 'lên lịch lại';
-        if ($request->status === 'completed') $statusText = 'hoàn thành';
-        if ($request->status === 'canceled') $statusText = 'hủy';
+        if ($status === 'completed') $statusText = 'hoàn thành';
+        if ($status === 'canceled') $statusText = 'hủy';
+        if ($status === 'scheduled') $statusText = 'kích hoạt lại';
 
         \App\Models\Notification::create([
             'user_id' => $appointment->user_id,

@@ -147,4 +147,69 @@ class AppointmentController extends Controller
 
         return redirect()->route('appointments')->with('success', 'Đổi lịch khám thành công!');
     }
+
+    public function acceptReschedule(Request $request, $id)
+    {
+        $appointment = Appointment::where('id', $id)
+            ->where('user_id', Auth::id())
+            ->where('status', 'rescheduled_pending')
+            ->firstOrFail();
+
+        if (!$appointment->proposed_date) {
+            return back()->withErrors(['message' => 'Không tìm thấy lịch đề xuất mới.']);
+        }
+
+        $appointment->appointment_date = $appointment->proposed_date;
+        $appointment->status = 'scheduled';
+        $appointment->proposed_date = null;
+        $appointment->save();
+
+        try {
+            AppNotification::create([
+                'user_id' => Auth::id(),
+                'type' => 'appointment',
+                'title' => 'Xác nhận lịch khám mới',
+                'message' => "Bạn đã xác nhận lịch khám mới với {$appointment->doctor_name} vào " . $appointment->appointment_date->format('d/m/Y H:i'),
+                'link' => route('appointments'),
+            ]);
+        } catch (\Exception $e) {
+            // ignore
+        }
+
+        if ($request->wantsJson() || $request->ajax()) {
+            return response()->json(['success' => true, 'message' => 'Xác nhận lịch mới thành công', 'appointment' => $appointment]);
+        }
+
+        return redirect()->route('appointments')->with('success', 'Xác nhận lịch khám mới thành công!');
+    }
+
+    public function declineReschedule(Request $request, $id)
+    {
+        $appointment = Appointment::where('id', $id)
+            ->where('user_id', Auth::id())
+            ->where('status', 'rescheduled_pending')
+            ->firstOrFail();
+
+        $appointment->status = 'canceled';
+        $appointment->proposed_date = null;
+        $appointment->save();
+
+        try {
+            AppNotification::create([
+                'user_id' => Auth::id(),
+                'type' => 'appointment',
+                'title' => 'Hủy lịch khám',
+                'message' => "Bạn đã từ chối đề xuất và hủy lịch khám với {$appointment->doctor_name}",
+                'link' => route('appointments'),
+            ]);
+        } catch (\Exception $e) {
+            // ignore
+        }
+
+        if ($request->wantsJson() || $request->ajax()) {
+            return response()->json(['success' => true, 'message' => 'Hủy lịch khám thành công', 'appointment' => $appointment]);
+        }
+
+        return redirect()->route('appointments')->with('success', 'Đã hủy lịch khám!');
+    }
 }
